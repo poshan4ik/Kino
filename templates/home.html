@@ -1,0 +1,196 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Афиша — АИС «Аврора»{% endblock %}
+
+{% block extra_css %}
+<style>
+    .hero-poster-placeholder {
+        background: linear-gradient(135deg, var(--surface) 0%, var(--surface-2) 100%);
+        position: relative;
+        overflow: hidden;
+    }
+    .hero-poster-placeholder::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background-image: 
+            linear-gradient(45deg, rgba(255,255,255,0.02) 25%, transparent 25%),
+            linear-gradient(-45deg, rgba(255,255,255,0.02) 25%, transparent 25%);
+        background-size: 20px 20px;
+        opacity: 0.15;
+    }
+    .film-poster-placeholder {
+        background: linear-gradient(135deg, var(--surface-2) 0%, var(--surface) 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-muted);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6 hero-content">
+                <div class="hero-badges">
+                    <span class="badge badge-genre">Фильм дня</span>
+                    <span class="badge badge-genre">Научная фантастика</span>
+                    <span class="badge badge-time">148 мин</span>
+                    <span class="badge" style="background: var(--red); color: var(--text);">16+</span>
+                </div>
+                <h1 class="hero-title">
+                    Интерстеллар<span class="accent">.</span>
+                </h1>
+                <p class="hero-subtitle">
+                    Команда исследователей отправляется в самое опасное путешествие в истории человечества — за пределы нашей галактики, чтобы найти новый дом для человечества.
+                </p>
+                <div class="d-flex gap-3 flex-wrap">
+                    <a href="{% url 'movie_detail' 1 %}" class="btn btn-primary session-pill">
+                        Подробнее и билеты
+                    </a>
+                    <a href="#films" class="btn btn-outline-primary session-pill">
+                        Смотреть афишу
+                    </a>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="hero-poster hero-poster-placeholder rounded-card">
+                    <div class="d-flex flex-column align-items-center justify-content-center h-100" style="position: relative; z-index: 1;">
+                        <span style="font-family: 'Bebas Neue', sans-serif; font-size: 4rem; letter-spacing: 0.1em; color: var(--border); opacity: 0.5;">НЕТ ПОСТЕРА</span>
+                        <span style="font-family: 'Inter', sans-serif; font-size: 1rem; color: var(--text-muted); margin-top: 1rem;">Постер будет здесь</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Filters -->
+<section class="py-4" style="background: var(--surface); border-bottom: 1px solid var(--border);">
+    <div class="container">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+            <h2 class="mb-0" style="font-family: 'Bebas Neue', sans-serif; font-size: 1.75rem; letter-spacing: 0.02em;">Афиша</h2>
+            <div class="filter-chips" id="genreFilters">
+                <button class="filter-chip active" data-genre="all">Все жанры</button>
+                <button class="filter-chip" data-genre="action">Боевик</button>
+                <button class="filter-chip" data-genre="comedy">Комедия</button>
+                <button class="filter-chip" data-genre="drama">Драма</button>
+                <button class="filter-chip" data-genre="scifi">Научная фантастика</button>
+                <button class="filter-chip" data-genre="horror">Ужасы</button>
+                <button class="filter-chip" data-genre="animation">Мультфильм</button>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Films Grid -->
+<section id="films" class="py-5">
+    <div class="container">
+        <div class="film-grid" id="filmsGrid">
+            {% for movie in movies %}
+            <article class="film-card" data-genre="{{ movie.genre.name|lower|slugify }}">
+                <div class="film-poster-wrapper">
+                    {% if movie.poster %}
+                        <img src="{{ movie.poster.url }}" alt="{{ movie.title }}" class="film-poster">
+                    {% else %}
+                        <div class="film-poster-placeholder w-100 h-100">
+                            <span style="font-family: 'Bebas Neue', sans-serif; font-size: 2rem; letter-spacing: 0.05em;">{{ movie.title|truncatechars:15 }}</span>
+                        </div>
+                    {% endif %}
+                    <span class="badge-age">{{ movie.age_rating }}+</span>
+                </div>
+                <div class="film-info">
+                    <h3 class="film-title"><a href="{% url 'movie_detail' movie.id %}">{{ movie.title }}</a></h3>
+                    <div class="film-meta">
+                        <span class="badge badge-genre">{{ movie.genre.name }}</span>
+                        <span class="film-genre">{{ movie.duration }} мин</span>
+                    </div>
+                    <div class="session-pills mt-3" id="sessions-{{ movie.id }}">
+                        {% for session in movie.sessions.all|slice:":5" %}
+                            <button class="session-pill-btn" data-session-id="{{ session.id }}" 
+                                    {% if not session.is_active %}disabled{% endif %}>
+                                {{ session.time|time:"H:i" }} · Зал {{ session.hall.number }}
+                            </button>
+                        {% empty %}
+                            <span style="color: var(--text-muted); font-size: 0.875rem;">Сеансов пока нет</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </article>
+            {% empty %}
+            <div class="col-12 empty-state">
+                <div class="empty-state-icon">🎬</div>
+                <h3 class="empty-state-title">Фильмов пока нет</h3>
+                <p>Афиша скоро обновится</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section class="py-5" style="background: var(--surface); border-top: 1px solid var(--border);">
+    <div class="container text-center">
+        <h2 style="font-family: 'Bebas Neue', sans-serif; font-size: 2.5rem; letter-spacing: 0.02em; margin-bottom: 1rem;">Не нашли нужный фильм?</h2>
+        <p style="color: var(--text-muted); max-width: 600px; margin: 0 auto 2rem;">Афиша обновляется ежедневно. Зарегистрируйтесь, чтобы получать уведомления о новых премьерах и предварительной продаже билетов.</p>
+        <a href="{% url 'register' %}" class="btn btn-primary btn-lg session-pill">Создать аккаунт</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Фильтрация фильмов по жанру
+    const filterChips = document.querySelectorAll('.filter-chip');
+    const filmCards = document.querySelectorAll('.film-card');
+    
+    filterChips.forEach(chip => {
+        chip.addEventListener('click', function() {
+            filterChips.forEach(c => c.classList.remove('active'));
+            this.classList.add('active');
+            
+            const genre = this.dataset.genre;
+            filmCards.forEach(card => {
+                if (genre === 'all' || card.dataset.genre === genre) {
+                    card.style.display = 'flex';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+    });
+    
+    // Загрузка сеансов для фильмов (AJAX)
+    filmCards.forEach(card => {
+        const movieId = card.querySelector('.session-pills')?.id?.replace('sessions-', '');
+        if (movieId) {
+            loadSessions(movieId, card.querySelector('.session-pills'));
+        }
+    });
+});
+
+async function loadSessions(movieId, container) {
+    try {
+        const response = await fetch(`/api/movies/${movieId}/sessions/`);
+        const sessions = await response.json();
+        
+        if (sessions.length > 0) {
+            container.innerHTML = sessions.map(s => 
+                `<button class="session-pill-btn" data-session-id="${s.id}" ${!s.is_active ? 'disabled' : ''}>
+                    ${s.time} · Зал ${s.hall_number} (${s.hall_type})
+                 </button>`
+            ).join('');
+        } else {
+            container.innerHTML = '<span style="color: var(--text-muted); font-size: 0.875rem;">Сеансов пока нет</span>';
+        }
+    } catch (e) {
+        console.error('Failed to load sessions', e);
+    }
+}
+</script>
+{% endblock %}

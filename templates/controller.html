@@ -1,0 +1,340 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Контроль билетов — АИС «Аврора»{% endblock %}
+
+{% block extra_css %}
+<style>
+    .controller-screen {
+        min-height: 70vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1rem;
+    }
+    .controller-form {
+        width: 100%;
+        max-width: 500px;
+    }
+    .controller-input-group {
+        position: relative;
+    }
+    .controller-input {
+        font-size: 1.5rem;
+        padding: 1.25rem 1.5rem;
+        text-align: center;
+        letter-spacing: 0.1em;
+        font-family: 'Bebas Neue', sans-serif;
+        border-radius: 14px;
+        border: 2px solid var(--border);
+        background: var(--surface);
+        color: var(--text);
+        transition: all 0.2s ease;
+    }
+    .controller-input:focus {
+        border-color: var(--red);
+        box-shadow: 0 0 0 4px rgba(229, 48, 76, 0.15);
+        outline: none;
+    }
+    .controller-input::placeholder {
+        color: var(--text-muted);
+        letter-spacing: 0.05em;
+    }
+    .controller-result {
+        text-align: center;
+        padding: 3rem 2rem;
+        border-radius: 14px;
+        max-width: 600px;
+        width: 100%;
+        animation: slideUp 0.3s ease;
+    }
+    @keyframes slideUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .controller-result.valid {
+        background: rgba(76, 175, 80, 0.15);
+        border: 2px solid #4caf50;
+    }
+    .controller-result.invalid {
+        background: rgba(244, 67, 54, 0.15);
+        border: 2px solid #f44336;
+    }
+    .controller-result.pending {
+        background: rgba(238, 184, 74, 0.15);
+        border: 2px solid var(--gold);
+    }
+    .controller-icon {
+        font-size: 5rem;
+        margin-bottom: 1.5rem;
+        line-height: 1;
+    }
+    .controller-title {
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 3rem;
+        letter-spacing: 0.02em;
+        margin-bottom: 1rem;
+        line-height: 1.2;
+    }
+    .controller-message {
+        font-size: 1.25rem;
+        color: var(--text-muted);
+        margin-bottom: 2rem;
+    }
+    .controller-ticket-info {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: left;
+    }
+    .controller-ticket-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid var(--border);
+    }
+    .controller-ticket-row:last-child {
+        border-bottom: none;
+    }
+    .controller-ticket-label {
+        color: var(--text-muted);
+    }
+    .controller-ticket-value {
+        font-weight: 600;
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 1.125rem;
+        letter-spacing: 0.02em;
+    }
+    .controller-ticket-barcode {
+        font-family: 'Courier New', monospace;
+        font-size: 1.25rem;
+        letter-spacing: 0.15em;
+        color: var(--red);
+        background: var(--bg);
+        padding: 1rem;
+        border-radius: 8px;
+        text-align: center;
+        border: 2px dashed var(--border);
+        margin: 1rem 0;
+        word-break: break-all;
+    }
+    .history-item {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .history-item.valid { border-left: 4px solid #4caf50; }
+    .history-item.invalid { border-left: 4px solid #f44336; }
+    .scanner-hint {
+        background: var(--surface);
+        border: 1px dashed var(--border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+        color: var(--text-muted);
+        margin-top: 1.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 style="font-family: 'Bebas Neue', sans-serif; font-size: 2rem; letter-spacing: 0.02em; margin: 0;">Контроль билетов</h1>
+        <span class="badge" style="background: var(--surface-2); color: var(--gold); border: 1px solid var(--border); font-size: 0.875rem;">
+            Контролёр: {{ user.get_full_name|default:user.username }}
+        </span>
+    </div>
+    
+    <div class="row g-4">
+        <!-- Main Scanner -->
+        <div class="col-lg-8">
+            <div class="controller-screen">
+                <div class="controller-form">
+                    {% if not ticket_result %}
+                    <!-- Input Form -->
+                    <form method="post" action="{% url 'controller_check' %}" id="controllerForm">
+                        {% csrf_token %}
+                        <div class="controller-input-group">
+                            <input type="text" 
+                                   class="controller-input" 
+                                   name="barcode" 
+                                   id="barcodeInput"
+                                   placeholder="ВВЕДИТЕ ШТРИХКОД"
+                                   autocomplete="off"
+                                   autocapitalize="off"
+                                   spellcheck="false"
+                                   autofocus>
+                        </div>
+                        <div class="d-grid mt-3">
+                            <button type="submit" class="btn btn-primary session-pill" style="font-size: 1.125rem; padding: 1rem;">
+                                Проверить билет
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <div class="scanner-hint">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="mb-2" style="opacity: 0.5;">
+                            <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+                        </svg>
+                        <p class="mb-0">Поддерживается сканирование штрихкода со экрана телефона или распечатанного билета</p>
+                        <small>Нажмите Enter для проверки после ввода кода</small>
+                    </div>
+                    
+                    {% else %}
+                    <!-- Result Display -->
+                    <div class="controller-result {% if ticket_result.valid %}valid{% elif ticket_result.already_used %}invalid{% else %}pending{% endif %}" id="controllerResult">
+                        <div class="controller-icon">
+                            {% if ticket_result.valid %}✅{% elif ticket_result.already_used %}❌{% else %}⚠️{% endif %}
+                        </div>
+                        <h2 class="controller-title" style="color: {% if ticket_result.valid %}#4caf50{% elif ticket_result.already_used %}#f44336{% else %}var(--gold){% endif %};">
+                            {% if ticket_result.valid %}ВХОД РАЗРЕШЁН{% elif ticket_result.already_used %}БИЛЕТ УЖЕ ИСПОЛЬЗОВАН{% else %}НЕДЕЙСТВИТЕЛЬНЫЙ БИЛЕТ{% endif %}
+                        </h2>
+                        <p class="controller-message">{{ ticket_result.message }}</p>
+                        
+                        {% if ticket_result.ticket %}
+                        <div class="controller-ticket-info">
+                            <div class="controller-ticket-barcode">{{ ticket_result.ticket.barcode }}</div>
+                            <div class="controller-ticket-row">
+                                <span class="controller-ticket-label">Фильм:</span>
+                                <span class="controller-ticket-value">{{ ticket_result.ticket.movie_title }}</span>
+                            </div>
+                            <div class="controller-ticket-row">
+                                <span class="controller-ticket-label">Сеанс:</span>
+                                <span class="controller-ticket-value">{{ ticket_result.ticket.session_date }} в {{ ticket_result.ticket.session_time }}</span>
+                            </div>
+                            <div class="controller-ticket-row">
+                                <span class="controller-ticket-label">Зал:</span>
+                                <span class="controller-ticket-value">Зал {{ ticket_result.ticket.hall_number }} ({{ ticket_result.ticket.hall_type }})</span>
+                            </div>
+                            <div class="controller-ticket-row">
+                                <span class="controller-ticket-label">Место:</span>
+                                <span class="controller-ticket-value">Ряд {{ ticket_result.ticket.seat_row }}, Место {{ ticket_result.ticket.seat_number }}</span>
+                            </div>
+                            <div class="controller-ticket-row">
+                                <span class="controller-ticket-label">Категория:</span>
+                                <span class="controller-ticket-value">{{ ticket_result.ticket.seat_category }}</span>
+                            </div>
+                            <div class="controller-ticket-row">
+                                <span class="controller-ticket-label">Покупатель:</span>
+                                <span class="controller-ticket-value">{{ ticket_result.ticket.client_name }}</span>
+                            </div>
+                            <div class="controller-ticket-row">
+                                <span class="controller-ticket-label">Статус:</span>
+                                <span class="controller-ticket-value">
+                                    <span class="badge badge-status-{{ ticket_result.ticket.status }}">
+                                        {{ ticket_result.ticket.get_status_display }}
+                                    </span>
+                                </span>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="d-flex gap-2 justify-content-center mt-4">
+                            <button type="button" class="btn btn-primary session-pill" onclick="resetController()" style="font-size: 1rem; padding: 0.875rem 2rem;">
+                                Следующий билет
+                            </button>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- History Sidebar -->
+        <div class="col-lg-4">
+            <div class="sale-form" style="height: fit-content; position: sticky; top: 100px;">
+                <h5 style="font-family: 'Bebas Neue', sans-serif; font-size: 1.125rem; letter-spacing: 0.02em; margin-bottom: 1rem;">История проверок</h5>
+                
+                {% if check_history %}
+                    <div id="checkHistory">
+                        {% for check in check_history %}
+                        <div class="history-item {% if check.valid %}valid{% else %}invalid{% endif %}">
+                            <div>
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <span class="badge badge-status-{{ check.status }}">
+                                        {% if check.valid %}✓ Вход разрешен{% else %}✗ Отклонен{% endif %}
+                                    </span>
+                                </div>
+                                <div class="text-muted small">
+                                    {{ check.movie_title|truncatechars:25 }} · Зал {{ check.hall_number }} · Ряд {{ check.seat_row }}, М. {{ check.seat_number }}
+                                </div>
+                            </div>
+                            <small class="text-muted">{{ check.checked_at|date:"H:i:s" }}</small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state" style="padding: 2rem;">
+                        <div class="empty-state-icon">📋</div>
+                        <h6 class="empty-state-title">Проверок пока нет</h6>
+                        <p class="small">История появится после первой проверки</p>
+                    </div>
+                {% endif %}
+                
+                <div class="mt-3 text-center">
+                    <button class="btn btn-outline-primary session-pill btn-sm" onclick="clearHistory()">Очистить историю</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const barcodeInput = document.getElementById('barcodeInput');
+    const controllerForm = document.getElementById('controllerForm');
+    
+    if (barcodeInput) {
+        // Автофокус и выбор всего текста при клике
+        barcodeInput.addEventListener('click', function() {
+            this.select();
+        });
+        
+        // Верхний регистр
+        barcodeInput.addEventListener('input', function() {
+            this.value = this.value.toUpperCase();
+        });
+        
+        // Предотвращаем отправку формы при нажатии Enter в поле ввода
+        // (форма отправляется кнопкой)
+        barcodeInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                controllerForm.submit();
+            }
+        });
+    }
+    
+    // Auto-submit если вставлен длинный код (сканер)
+    if (barcodeInput) {
+        barcodeInput.addEventListener('paste', function() {
+            setTimeout(() => {
+                if (this.value.length >= 10) {
+                    controllerForm.submit();
+                }
+            }, 100);
+        });
+    }
+});
+
+function resetController() {
+    window.location.href = '{% url "controller" %}';
+}
+
+function clearHistory() {
+    if (confirm('Очистить историю проверок за эту сессию?')) {
+        // Можно реализовать через AJAX или просто перезагрузить
+        window.location.href = '{% url "controller" %}?clear_history=1';
+    }
+}
+</script>
+{% endblock %}

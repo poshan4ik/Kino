@@ -1,0 +1,341 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Выбор мест — АИС «Аврора»{% endblock %}
+
+{% block extra_css %}
+<style>
+    .hall-schema {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+        padding: 2rem;
+        max-width: 100%;
+        overflow-x: auto;
+    }
+    .screen-indicator {
+        width: 80%;
+        max-width: 600px;
+        height: 4px;
+        background: linear-gradient(90deg, var(--gold), var(--red), var(--gold));
+        border-radius: 2px;
+        margin-bottom: 1rem;
+        position: relative;
+    }
+    .screen-indicator::before {
+        content: 'ЭКРАН';
+        position: absolute;
+        top: -1.5rem;
+        left: 50%;
+        transform: translateX(-50%);
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 0.75rem;
+        letter-spacing: 0.1em;
+        color: var(--text-muted);
+    }
+    .seat-row {
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+        margin-bottom: 0.375rem;
+    }
+    .seat-row-label {
+        width: 36px;
+        text-align: right;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        font-weight: 500;
+        flex-shrink: 0;
+    }
+    .seat {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        border: 2px solid var(--border);
+        background: var(--surface);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+    }
+    .seat:hover:not(.booked):not(.selected) {
+        border-color: var(--red);
+        transform: scale(1.1);
+        z-index: 1;
+    }
+    .seat.selected {
+        background: var(--gold);
+        border-color: var(--gold);
+        color: var(--bg);
+        transform: scale(1.1);
+        box-shadow: 0 0 12px rgba(238, 184, 74, 0.4);
+    }
+    .seat.booked {
+        background: var(--red-dim);
+        border-color: var(--red-dim);
+        color: var(--text-muted);
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+    .seat.vip {
+        border-radius: 50%;
+    }
+    .seat.comfort {
+        border-radius: 8px;
+    }
+    .seat-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        justify-content: center;
+        margin-top: 1rem;
+        padding: 1rem;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+    }
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.875rem;
+        color: var(--text-muted);
+    }
+    .legend-seat {
+        width: 20px;
+        height: 20px;
+        border-radius: 4px;
+        border: 2px solid;
+    }
+    .legend-seat.available { background: var(--surface); border-color: var(--border); }
+    .legend-seat.selected { background: var(--gold); border-color: var(--gold); }
+    .legend-seat.booked { background: var(--red-dim); border-color: var(--red-dim); }
+    .legend-seat.vip { border-radius: 50%; }
+    .legend-seat.comfort { border-radius: 6px; }
+    
+    .booking-summary {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 1.5rem;
+        position: sticky;
+        top: 100px;
+    }
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid var(--border);
+    }
+    .summary-row:last-child {
+        border-bottom: none;
+        font-weight: 700;
+        font-size: 1.125rem;
+    }
+    .session-info-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Back Navigation -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb" style="background: transparent; padding: 0;">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}">Афиша</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'movie_detail' session.movie.id %}">{{ session.movie.title }}</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Выбор мест</li>
+        </ol>
+    </nav>
+    
+    <div class="row g-4">
+        <!-- Left: Hall Schema -->
+        <div class="col-lg-8">
+            <!-- Session Info -->
+            <div class="session-info-card">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h2 style="font-family: 'Bebas Neue', sans-serif; font-size: 1.5rem; letter-spacing: 0.02em; margin-bottom: 0.5rem;">{{ session.movie.title }}</h2>
+                        <div class="d-flex flex-wrap gap-2 text-muted" style="font-size: 0.9375rem;">
+                            <span class="badge badge-genre">{{ session.movie.genre.name }}</span>
+                            <span>{{ session.movie.duration }} мин · {{ session.movie.age_rating }}+</span>
+                            <span>{{ session.date|date:"d EEEE" }} в {{ session.time|time:"H:i" }}</span>
+                            <span class="badge" style="background: {% if session.hall.type == 'IMAX' %}rgba(238,184,74,0.2); color: var(--gold); border-color: var(--gold); {% elif session.hall.type == 'VIP' %}rgba(229,48,76,0.2); color: var(--red); border-color: var(--red); {% else %}var(--surface-2); color: var(--text-muted); border-color: var(--border); {% endif %}">
+                                Зал {{ session.hall.number }} · {{ session.hall.get_type_display }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                        <div style="font-family: 'Bebas Neue', sans-serif; font-size: 2rem; color: var(--gold);">
+                            от {{ session.price_standard }} ₽
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Hall Schema -->
+            <div class="hall-schema" id="hallSchema">
+                {% for row_num, seats in seats_by_row.items %}
+                <div class="seat-row">
+                    <span class="seat-row-label">Ряд {{ row_num }}</span>
+                    {% for seat in seats %}
+                        <button type="button" 
+                                class="seat {% if seat.category == 'vip' %}vip{% elif seat.category == 'comfort' %}comfort{% endif %} {% if seat.is_booked %}booked{% endif %}"
+                                data-seat-id="{{ seat.id }}"
+                                data-price="{{ seat.price }}"
+                                data-category="{{ seat.category }}"
+                                data-row="{{ seat.row }}"
+                                data-number="{{ seat.number }}"
+                                {% if seat.is_booked %}disabled{% endif %}
+                                aria-label="Ряд {{ seat.row }}, Место {{ seat.number }}, {{ seat.get_category_display }}{% if seat.is_booked %}, занято{% endif %}">
+                            {{ seat.number }}
+                        </button>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+                
+                <!-- Legend -->
+                <div class="seat-legend">
+                    <div class="legend-item">
+                        <div class="legend-seat available"></div>
+                        <span>Свободно</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-seat selected"></div>
+                        <span>Выбрано</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-seat booked"></div>
+                        <span>Занято</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-seat available vip"></div>
+                        <span>VIP</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-seat available comfort"></div>
+                        <span>Комфорт</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right: Booking Summary -->
+        <div class="col-lg-4">
+            <div class="booking-summary">
+                <h5 style="font-family: 'Bebas Neue', sans-serif; font-size: 1.25rem; letter-spacing: 0.02em; margin-bottom: 1rem;">Итог заказа</h5>
+                
+                <div class="summary-row">
+                    <span>Фильм:</span>
+                    <span>{{ session.movie.title }}</span>
+                </div>
+                <div class="summary-row">
+                    <span>Сеанс:</span>
+                    <span>{{ session.date|date:"d EEEE" }} в {{ session.time|time:"H:i" }}</span>
+                </div>
+                <div class="summary-row">
+                    <span>Зал:</span>
+                    <span>Зал {{ session.hall.number }} ({{ session.hall.get_type_display }})</span>
+                </div>
+                <hr style="border-color: var(--border);">
+                <div class="summary-row">
+                    <span>Выбрано мест:</span>
+                    <span id="selected-count">0</span>
+                </div>
+                <div class="summary-row">
+                    <span>Итого:</span>
+                    <span id="total-price">{{ session.price_standard }} ₽</span>
+                </div>
+                
+                <form method="post" action="{% url 'booking' session.id %}" id="bookingForm" class="mt-4">
+                    {% csrf_token %}
+                    <input type="hidden" name="seats" id="id_seats" value="">
+                    <button type="submit" class="btn btn-primary w-100 session-pill" id="submitBtn" disabled>
+                        Забронировать
+                    </button>
+                </form>
+                
+                <div class="mt-3 text-center">
+                    <p class="text-muted small mb-0">Бронь держится 15 минут</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const seats = document.querySelectorAll('.seat:not(.booked)');
+    const selectedSeats = new Set();
+    const maxSeats = 8;
+    const submitBtn = document.getElementById('submitBtn');
+    const selectedCount = document.getElementById('selected-count');
+    const totalPrice = document.getElementById('total-price');
+    const hiddenInput = document.getElementById('id_seats');
+    
+    seats.forEach(seat => {
+        seat.addEventListener('click', function() {
+            const seatId = this.dataset.seatId;
+            
+            if (this.classList.contains('selected')) {
+                this.classList.remove('selected');
+                selectedSeats.delete(seatId);
+            } else {
+                if (selectedSeats.size >= maxSeats) {
+                    window.AuroraCinema.showToast(`Максимум ${maxSeats} мест за раз`, 'warning');
+                    return;
+                }
+                this.classList.add('selected');
+                selectedSeats.add(seatId);
+            }
+            
+            updateSummary();
+        });
+    });
+    
+    function updateSummary() {
+        const count = selectedSeats.size;
+        selectedCount.textContent = count;
+        
+        let total = 0;
+        selectedSeats.forEach(seatId => {
+            const seat = document.querySelector(`.seat[data-seat-id="${seatId}"]`);
+            if (seat) {
+                total += parseFloat(seat.dataset.price || 0);
+            }
+        });
+        totalPrice.textContent = total.toFixed(2) + ' ₽';
+        
+        hiddenInput.value = Array.from(selectedSeats).join(',');
+        submitBtn.disabled = count === 0;
+        submitBtn.textContent = count > 0 ? `Забронировать ${count} мест` : 'Забронировать';
+    }
+    
+    // Подтверждение перед отправкой
+    const form = document.getElementById('bookingForm');
+    form.addEventListener('submit', function(e) {
+        if (selectedSeats.size === 0) {
+            e.preventDefault();
+            return;
+        }
+        
+        const confirmMsg = `Подтверждаете бронь ${selectedSeats.size} мест на "${document.querySelector('.session-info-card h2').textContent.trim()}"?`;
+        if (!confirm(confirmMsg)) {
+            e.preventDefault();
+        }
+    });
+});
+</script>
+{% endblock %}

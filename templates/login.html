@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Вход — АИС «Аврора»{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="text-center mb-4">
+            <a href="{% url 'home' %}" class="navbar-brand d-inline-flex align-items-center gap-2">
+                <span class="logo-icon" style="font-family: 'Bebas Neue', sans-serif; font-size: 1.75rem; letter-spacing: 0.05em; color: var(--text);">КИНО</span>
+                <span class="logo-accent" style="font-family: 'Bebas Neue', sans-serif; font-size: 1.75rem; letter-spacing: 0.05em; color: var(--red);">АВРОРА</span>
+            </a>
+        </div>
+        
+        <h1 class="auth-title">Вход в аккаунт</h1>
+        <p class="auth-subtitle">Введите свои данные для доступа к личному кабинету</p>
+        
+        <form method="post" class="auth-form" novalidate>
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger session-pill">
+                    {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+                </div>
+            {% endif %}
+            
+            <div class="form-group">
+                <label for="{{ form.username.id_for_label }}" class="form-label">Логин или Email</label>
+                {{ form.username }}
+                {% if form.username.errors %}
+                    <div class="text-danger small mt-1">{{ form.username.errors.0 }}</div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                <label for="{{ form.password.id_for_label }}" class="form-label">Пароль</label>
+                <div class="input-group">
+                    {{ form.password }}
+                    <button type="button" class="btn btn-outline-secondary input-group-text" id="togglePassword" style="background: var(--surface); border-color: var(--border); color: var(--text-muted);">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="eyeIcon"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </button>
+                </div>
+                {% if form.password.errors %}
+                    <div class="text-danger small mt-1">{{ form.password.errors.0 }}</div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group d-flex justify-content-between align-items-center">
+                <label class="form-check mb-0">
+                    <input type="checkbox" name="remember" class="form-check-input" style="border-color: var(--border);">
+                    <span class="form-check-label text-muted small">Запомнить меня</span>
+                </label>
+                <a href="#" class="text-muted small" style="font-size: 0.875rem;">Забыли пароль?</a>
+            </div>
+            
+            <button type="submit" class="btn btn-primary w-100 session-pill mt-3" style="padding: 0.875rem; font-size: 1rem;">
+                Войти
+            </button>
+        </form>
+        
+        <div class="auth-footer">
+            <p class="mb-0">Ещё нет аккаунта? <a href="{% url 'register' %}{% if next %}?next={{ next }}{% endif %}">Зарегистрироваться</a></p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const passwordInput = document.getElementById('id_password');
+    const toggleBtn = document.getElementById('togglePassword');
+    const eyeIcon = document.getElementById('eyeIcon');
+    
+    if (passwordInput && toggleBtn) {
+        toggleBtn.addEventListener('click', function() {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            
+            if (type === 'text') {
+                eyeIcon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
+            } else {
+                eyeIcon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+            }
+        });
+    }
+    
+    // Focus first input
+    const firstInput = document.querySelector('.auth-form input:not([type="hidden"])');
+    if (firstInput) firstInput.focus();
+});
+</script>
+{% endblock %}
