@@ -516,7 +516,7 @@ class HomeView(TemplateView):
         ).select_related('genre').prefetch_related(
             Prefetch('sessions', queryset=Session.objects.filter(
                 date__gte=date.today(), is_active=True
-            ).order_by('date', 'time')[:5])
+            ).order_by('date', 'time'))
         )[:12]
         return context
 
