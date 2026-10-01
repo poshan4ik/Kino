@@ -317,6 +317,21 @@ a:hover { color: var(--gold); }
 /* Film Card */
 .film-card {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.poster-box {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  background: var(--surface-raised);
+}
+.poster-box .film-card-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .film-card a { color: inherit; text-decoration: none; }
 .film-card-img-wrap {
@@ -345,18 +360,27 @@ a:hover { color: var(--gold); }
 .film-card-title {
   font-family: 'Bebas Neue', sans-serif;
   font-size: 1.5rem;
-  line-height: 1;
+  line-height: 1.1;
   color: var(--text);
   margin: 1rem 0 0 0;
   letter-spacing: 0.02em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: calc(1.5rem * 1.1 * 2);
 }
 .film-card-genre {
   margin: 0.25rem 0 0 0;
   font-size: 0.875rem;
   color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .film-card-sessions {
-  margin-top: 1rem;
+  margin-top: auto;
+  padding-top: 1rem;
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;

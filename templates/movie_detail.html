@@ -11,10 +11,17 @@
         <!-- Poster -->
         <div style="width:260px;min-width:200px;flex-shrink:0;">
             <div style="position:relative;overflow:hidden;border-radius:14px;">
-                <img src="https://images.unsplash.com/photo-{{ movie.id }}?auto=format&fit=crop&w=800&q=85"
+                {% if movie.poster %}
+                <img src="{{ movie.poster.url }}"
                      alt="{{ movie.title }}"
-                     style="width:100%;aspect-ratio:2/3;object-fit:cover;display:block;"
-                     onerror="this.src='https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&w=800&q=85';this.onerror=null;">
+                     width="800" height="1200"
+                     style="width:100%;aspect-ratio:2/3;object-fit:cover;display:block;">
+                {% else %}
+                <img src="https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&w=800&q=85"
+                     alt="{{ movie.title }}"
+                     width="800" height="1200"
+                     style="width:100%;aspect-ratio:2/3;object-fit:cover;display:block;">
+                {% endif %}
                 <div class="poster-shade"></div>
                 <span class="badge" style="position:absolute;top:.75rem;left:.75rem;">{{ movie.age_rating }}+</span>
             </div>
