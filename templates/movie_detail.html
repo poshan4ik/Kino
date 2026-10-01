@@ -1,194 +1,136 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}{{ movie.title }} — АИС «Аврора»{% endblock %}
-
-{% block extra_css %}
-<style>
-    .movie-poster-large {
-        border-radius: 14px;
-        aspect-ratio: 2/3;
-        object-fit: cover;
-        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
-    }
-    .session-day-tabs .nav-link {
-        border-radius: 999px;
-        margin: 0 0.25rem;
-        padding: 0.625rem 1.25rem !important;
-        font-weight: 600;
-    }
-    .session-day-tabs .nav-link.active {
-        background: var(--red);
-        color: var(--text) !important;
-    }
-    .hall-mini-card {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 1rem;
-        transition: all 0.2s ease;
-    }
-    .hall-mini-card:hover {
-        border-color: var(--red);
-        background: var(--surface-2);
-    }
-</style>
-{% endblock %}
+{% block title %}{{ movie.title }} — Аврора{% endblock %}
 
 {% block content %}
-<!-- Movie Header -->
-<section class="py-5">
-    <div class="container">
-        <nav aria-label="breadcrumb" class="mb-4">
-            <ol class="breadcrumb" style="background: transparent; padding: 0;">
-                <li class="breadcrumb-item"><a href="{% url 'home' %}">Афиша</a></li>
-                <li class="breadcrumb-item active" aria-current="page">{{ movie.title }}</li>
-            </ol>
-        </nav>
-        
-        <div class="row g-4">
-            <!-- Poster -->
-            <div class="col-lg-3 col-md-4">
-                <div class="position-relative">
-                    {% if movie.poster %}
-                        <img src="{{ movie.poster.url }}" alt="{{ movie.title }}" class="movie-poster-large w-100">
-                    {% else %}
-                        <div class="movie-poster-large w-100 d-flex flex-column align-items-center justify-content-center" style="background: linear-gradient(135deg, var(--surface-2) 0%, var(--surface) 100%);">
-                            <span style="font-family: 'Bebas Neue', sans-serif; font-size: 3rem; letter-spacing: 0.05em; color: var(--border);">{{ movie.title|truncatechars:20 }}</span>
-                        </div>
-                    {% endif %}
-                    <span class="badge-age" style="top: 1rem; left: 1rem; font-size: 1.25rem;">{{ movie.age_rating }}+</span>
-                </div>
+<main class="page-shell py-10">
+    <!-- Hero -->
+    <div class="flex gap-8 flex-wrap" style="align-items:flex-start;">
+        <!-- Poster -->
+        <div style="width:280px;min-width:200px;flex-shrink:0;">
+            <div class="relative overflow-hidden rounded-card">
+                {% if movie.poster %}
+                    <img src="{{ movie.poster.url }}" alt="{{ movie.title }}"
+                         style="width:100%;aspect-ratio:2/3;object-fit:cover;display:block;">
+                {% else %}
+                    <img src="https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&w=800&q=85"
+                         alt="{{ movie.title }}"
+                         style="width:100%;aspect-ratio:2/3;object-fit:cover;display:block;">
+                {% endif %}
+                <div class="poster-shade"></div>
+                <span class="badge" style="position:absolute;top:0.75rem;left:0.75rem;font-size:0.875rem;">
+                    {{ movie.age_rating }}+
+                </span>
             </div>
-            
-            <!-- Info -->
-            <div class="col-lg-6 col-md-8">
-                <div class="hero-badges mb-3">
-                    <span class="badge badge-genre">{{ movie.genre.name }}</span>
-                    <span class="badge badge-time">{{ movie.duration }} мин</span>
-                    <span class="badge" style="background: var(--red); color: var(--text);">{{ movie.age_rating }}+</span>
-                    <span class="badge" style="background: {% if movie.status == 'active' %}rgba(76,175,80,0.2){% else %}var(--surface-2){% endif %}; color: {% if movie.status == 'active' %}#4caf50{% else %}var(--text-muted){% endif %}; border-color: {% if movie.status == 'active' %}#4caf50{% else %}var(--border){% endif %};">
-                        {{ movie.get_status_display }}
-                    </span>
-                </div>
-                
-                <h1 style="font-family: 'Bebas Neue', sans-serif; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: 0.02em; margin-bottom: 1rem;">{{ movie.title }}</h1>
-                
-                <p style="color: var(--text-muted); line-height: 1.7; margin-bottom: 2rem;">{{ movie.description|default:"Описание отсутствует" }}</p>
-                
-                <div class="d-flex flex-wrap gap-3 text-muted" style="font-size: 0.9375rem;">
-                    <div class="d-flex align-items-center gap-0.5rem">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                        <span>{{ movie.duration }} мин</span>
-                    </div>
-                    <div class="d-flex align-items-center gap-0.5rem">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                        <span>{{ movie.genre.name }}</span>
-                    </div>
-                </div>
+        </div>
+
+        <!-- Info -->
+        <div style="flex:1;min-width:280px;">
+            <div class="section-rule mb-5"></div>
+            <p class="eyebrow">{{ movie.genre.name }}</p>
+            <h1 style="font-size:clamp(2.5rem,5vw,3.5rem);margin:0;">{{ movie.title }}</h1>
+
+            <div class="flex items-center gap-4 mt-4 flex-wrap" style="font-size:0.875rem;color:var(--text-muted);">
+                <span class="text-gold">★ {{ movie.rating|default:"8.0" }}</span>
+                <span>{{ movie.genre.name }}</span>
+                <span>{{ movie.duration }} мин</span>
+                <span>{{ movie.age_rating }}+</span>
+                <span class="badge {% if movie.status == 'active' %}badge-green{% else %}badge-blue{% endif %}">
+                    {{ movie.get_status_display }}
+                </span>
             </div>
-            
-            <!-- Quick Actions -->
-            <div class="col-lg-3">
-                <div class="d-flex flex-column gap-2 h-100">
-                    {% if user.is_authenticated and user.is_client %}
-                        <a href="#sessions" class="btn btn-primary session-pill">Выбрать сеанс</a>
-                    {% elif not user.is_authenticated %}
-                        <a href="{% url 'login' %}?next={% url 'movie_detail' movie.id %}" class="btn btn-primary session-pill">Войти для брони</a>
-                        <a href="{% url 'register' %}?next={% url 'movie_detail' movie.id %}" class="btn btn-outline-primary session-pill">Регистрация</a>
+
+            <p class="text-muted mt-5" style="line-height:1.7;max-width:640px;">
+                {{ movie.description|default:"Описание отсутствует." }}
+            </p>
+
+            <div class="flex gap-3 mt-6 flex-wrap">
+                {% if user.is_authenticated %}
+                    {% if sessions_by_date %}
+                        <a href="#sessions" class="btn btn-primary" style="box-shadow:var(--soft-glow);">Выбрать сеанс</a>
                     {% endif %}
-                    {% if user.is_authenticated and user.is_manager %}
-                        <a href="{% url 'admin:cinema_movie_change' movie.id %}" target="_blank" class="btn btn-outline-primary session-pill">Редактировать</a>
-                    {% endif %}
-                </div>
+                {% else %}
+                    <a href="{% url 'login' %}?next={% url 'movie_detail' movie.id %}" class="btn btn-primary">Войти для брони</a>
+                {% endif %}
+                {% if user.is_authenticated and user.is_manager %}
+                    <a href="{% url 'admin:cinema_movie_change' movie.id %}" target="_blank" class="btn btn-outline">Редактировать</a>
+                {% endif %}
             </div>
         </div>
     </div>
-</section>
 
-<!-- Sessions -->
-<section id="sessions" class="py-5" style="background: var(--surface); border-top: 1px solid var(--border);">
-    <div class="container">
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
-            <h2 style="font-family: 'Bebas Neue', sans-serif; font-size: 1.75rem; letter-spacing: 0.02em; margin: 0;">Сеансы</h2>
-        </div>
-        
+    <!-- Sessions -->
+    <section id="sessions" class="mt-12">
+        <div class="section-rule mb-5"></div>
+        <p class="eyebrow">Расписание</p>
+        <h2 style="font-size:clamp(2rem,4vw,2.5rem);margin:0 0 1.5rem;">СЕАНСЫ</h2>
+
         {% if sessions_by_date %}
-            <!-- Date Tabs -->
-            <ul class="nav session-day-tabs justify-content-center mb-4" id="sessionTabs" role="tablist">
-                {% for date_key, date_sessions in sessions_by_date.items %}
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link {% if forloop.first %}active{% endif %}" 
-                                id="tab-{{ date_key }}" 
-                                data-bs-toggle="tab" 
-                                data-bs-target="#panel-{{ date_key }}" 
-                                type="button" 
-                                role="tab">
-                            {{ date_key|date:"d EEEE" }}
-                        </button>
-                    </li>
+            <!-- Date tabs -->
+            <div class="tabs mb-6" id="dateTabs">
+                {% for date_key, sessions in sessions_by_date.items %}
+                    <button class="tab-btn {% if forloop.first %}active{% endif %}"
+                            onclick="showDay('{{ date_key }}', this)">
+                        {{ date_key|date:"d EEEE" }}
+                    </button>
                 {% endfor %}
-            </ul>
-            
-            <!-- Tab Panels -->
-            <div class="tab-content" id="sessionTabsContent">
-                {% for date_key, date_sessions in sessions_by_date.items %}
-                <div class="tab-pane fade {% if forloop.first %}show active{% endif %}" 
-                     id="panel-{{ date_key }}" 
-                     role="tabpanel">
-                    <div class="row g-3">
-                        {% for session in date_sessions %}
-                        <div class="col-md-6 col-lg-4">
-                            <div class="hall-mini-card">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <h6 class="mb-0" style="font-family: 'Bebas Neue', sans-serif; font-size: 1.125rem; letter-spacing: 0.02em;">{{ session.time|time:"H:i" }}</h6>
-                                    <span class="badge" style="background: {% if session.hall.type == 'IMAX' %}rgba(238,184,74,0.2); color: var(--gold); border-color: var(--gold); {% elif session.hall.type == 'VIP' %}rgba(229,48,76,0.2); color: var(--red); border-color: var(--red); {% else %}var(--surface-2); color: var(--text-muted); border-color: var(--border); {% endif %}">
-                                        {{ session.hall.get_type_display }}
-                                    </span>
+            </div>
+
+            <!-- Session panels -->
+            {% for date_key, sessions in sessions_by_date.items %}
+                <div class="day-panel" id="day-{{ date_key }}" {% if not forloop.first %}style="display:none;"{% endif %}>
+                    <div class="flex flex-col gap-4">
+                        {% for session in sessions %}
+                        <div class="panel p-5">
+                            <div class="flex items-center justify-between flex-wrap gap-3">
+                                <div>
+                                    <h3 style="font-size:1.5rem;margin:0;">{{ session.time|time:"H:i" }}</h3>
+                                    <p class="text-xs text-muted" style="margin:0.25rem 0 0 0;">
+                                        Зал {{ session.hall.number }} · {{ session.hall.get_type_display }} · {{ session.movie.duration }} мин
+                                    </p>
                                 </div>
-                                <p class="text-muted mb-2" style="font-size: 0.875rem;">Зал {{ session.hall.number }} · {{ session.hall.capacity }} мест</p>
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div class="d-flex gap-1 flex-wrap">
-                                        <span class="badge" style="background: var(--surface-2); color: var(--text); border: 1px solid var(--border); font-size: 0.7rem;">Стандарт: {{ session.price_standard }}₽</span>
-                                        <span class="badge" style="background: var(--surface-2); color: var(--gold); border: 1px solid var(--gold); font-size: 0.7rem;">Комфорт: {{ session.price_comfort }}₽</span>
-                                        <span class="badge" style="background: var(--surface-2); color: var(--red); border: 1px solid var(--red); font-size: 0.7rem;">VIP: {{ session.price_vip }}₽</span>
-                                    </div>
-                                </div>
-                                <div class="mt-3">
-                                    {% if user.is_authenticated %}
-                                        <a href="{% url 'booking' session.id %}" class="btn btn-primary session-pill w-100" {% if not session.is_active %}disabled{% endif %}>
-                                            {% if session.is_active %}Выбрать места{% else %}Недоступен{% endif %}
-                                        </a>
-                                    {% else %}
-                                        <a href="{% url 'login' %}?next={% url 'booking' session.id %}" class="btn btn-primary session-pill w-100">Войти для брони</a>
-                                    {% endif %}
-                                </div>
+                                <span class="badge {% if session.hall.type == 'IMAX' %}badge-gold{% elif session.hall.type == 'VIP' %}badge-blue{% else %}badge-green{% endif %}">
+                                    {{ session.hall.get_type_display }}
+                                </span>
+                            </div>
+
+                            <div class="flex gap-4 mt-4 flex-wrap text-sm text-muted">
+                                <span>Стандарт: <b class="text-text">{{ session.price_standard }} ₽</b></span>
+                                <span>Комфорт: <b class="text-gold">{{ session.price_comfort }} ₽</b></span>
+                                <span>VIP: <b class="text-destructive">{{ session.price_vip }} ₽</b></span>
+                            </div>
+
+                            <div class="mt-4">
+                                {% if user.is_authenticated %}
+                                    <a href="{% url 'booking' session.id %}" class="btn btn-primary btn-sm" {% if not session.is_active %}disabled{% endif %}>
+                                        {% if session.is_active %}Выбрать места{% else %}Недоступен{% endif %}
+                                    </a>
+                                {% else %}
+                                    <a href="{% url 'login' %}?next={% url 'booking' session.id %}" class="btn btn-primary btn-sm">Войти для брони</a>
+                                {% endif %}
                             </div>
                         </div>
                         {% endfor %}
                     </div>
                 </div>
-                {% endfor %}
-            </div>
+            {% endfor %}
         {% else %}
-            <div class="empty-state">
-                <div class="empty-state-icon">🎟️</div>
-                <h3 class="empty-state-title">Сеансов пока нет</h3>
-                <p>Расписание на ближайшие дни появится позже</p>
+            <div class="empty-state panel">
+                <p>Сеансов пока нет</p>
             </div>
         {% endif %}
-    </div>
-</section>
+    </section>
+</main>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Активация первой вкладки по умолчанию
-    const firstTab = document.querySelector('#sessionTabs .nav-link');
-    if (firstTab) {
-        new bootstrap.Tab(firstTab).show();
-    }
-});
+function showDay(dateKey, btn) {
+    document.querySelectorAll('.day-panel').forEach(p => p.style.display = 'none');
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('day-' + dateKey).style.display = 'block';
+    btn.classList.add('active');
+}
 </script>
 {% endblock %}

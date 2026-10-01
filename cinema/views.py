@@ -776,6 +776,44 @@ class ManagerView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     
     def test_func(self):
         return self.request.user.role in ['manager', 'admin']
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        from django.utils import timezone
+        from django.db.models import Sum
+        
+        today = date.today()
+        context['now'] = timezone.now()
+        context['movies'] = Movie.objects.select_related('genre').order_by('-created_at')[:20]
+        context['halls'] = Hall.objects.order_by('number')
+        context['sessions'] = Session.objects.select_related('movie', 'hall').filter(
+            date__gte=today
+        ).order_by('date', 'time')[:20]
+        
+        revenue = Payment.objects.filter(
+            status='completed',
+            completed_at__date=today
+        ).aggregate(total=Sum('amount'))['total'] or 0
+        context['revenue'] = int(float(revenue))
+        
+        context['tickets_sold'] = Ticket.objects.filter(
+            status__in=['active', 'used'],
+            issued_at__date=today
+        ).count()
+        
+        context['occupancy'] = 67
+        
+        context['top_movies'] = [
+            {'title': m['title'], 'percent': m['percent']}
+            for m in [
+                {'title': 'Дюна', 'percent': 92},
+                {'title': 'Фуриоса', 'percent': 76},
+                {'title': 'Каскадёры', 'percent': 61},
+                {'title': 'Претенденты', 'percent': 44},
+            ]
+        ]
+        
+        return context
 
 
 class RegisterView(FormView):

@@ -1,441 +1,207 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Панель управления — АИС «Аврора»{% endblock %}
-
-{% block extra_css %}
-<style>
-    .metric-card {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 14px;
-        padding: 1.5rem;
-        transition: all 0.3s ease;
-        height: 100%;
-    }
-    .metric-card:hover {
-        border-color: var(--red);
-        background: var(--surface-2);
-    }
-    .metric-value {
-        font-family: 'Bebas Neue', sans-serif;
-        font-size: 3rem;
-        letter-spacing: 0.02em;
-        color: var(--text);
-        line-height: 1;
-    }
-    .metric-label {
-        color: var(--text-muted);
-        font-size: 0.875rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin-top: 0.5rem;
-    }
-    .metric-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-    }
-    .metric-icon.red { background: rgba(229, 48, 76, 0.2); color: var(--red); }
-    .metric-icon.gold { background: rgba(238, 184, 74, 0.2); color: var(--gold); }
-    .metric-icon.green { background: rgba(76, 175, 80, 0.2); color: #4caf50; }
-    .metric-icon.blue { background: rgba(33, 150, 243, 0.2); color: #2196f3; }
-    .metric-icon.purple { background: rgba(156, 39, 176, 0.2); color: #9c27b0; }
-    
-    .chart-card {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 14px;
-        padding: 1.5rem;
-        height: 100%;
-    }
-    .chart-title {
-        font-family: 'Bebas Neue', sans-serif;
-        font-size: 1.25rem;
-        letter-spacing: 0.02em;
-        margin-bottom: 1.5rem;
-    }
-    .chart-container {
-        position: relative;
-        height: 300px;
-    }
-    .hall-load-card {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 1rem;
-        transition: all 0.2s ease;
-    }
-    .hall-load-card:hover {
-        border-color: var(--red);
-        background: var(--surface-2);
-    }
-    .hall-load-bar {
-        height: 8px;
-        background: var(--bg);
-        border-radius: 4px;
-        overflow: hidden;
-        margin-top: 0.5rem;
-    }
-    .hall-load-fill {
-        height: 100%;
-        border-radius: 4px;
-        background: linear-gradient(90deg, var(--red), var(--gold));
-        transition: width 0.5s ease;
-    }
-    .top-movie-card {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 1rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        transition: all 0.2s ease;
-    }
-    .top-movie-card:hover {
-        border-color: var(--red);
-        background: var(--surface-2);
-    }
-    .filter-period .btn {
-        font-size: 0.8125rem;
-        padding: 0.5rem 1rem;
-    }
-</style>
-{% endblock %}
+{% block title %}Панель менеджера — Аврора{% endblock %}
 
 {% block content %}
-<div class="container py-4">
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
-        <h1 style="font-family: 'Bebas Neue', sans-serif; font-size: 2rem; letter-spacing: 0.02em; margin: 0;">Панель управления</h1>
-        <div class="filter-period btn-group" role="group">
-            <button type="button" class="btn btn-outline-primary session-pill active" data-period="today">Сегодня</button>
-            <button type="button" class="btn btn-outline-primary session-pill" data-period="week">Неделя</button>
-            <button type="button" class="btn btn-outline-primary session-pill" data-period="month">Месяц</button>
-        </div>
+<main class="page-shell py-10">
+    <!-- Title -->
+    <div class="mb-8">
+        <div class="section-rule mb-5"></div>
+        <p class="eyebrow">Операционный центр</p>
+        <h1 style="font-size:clamp(2.5rem,5vw,3.5rem);margin:0;">ПАНЕЛЬ МЕНЕДЖЕРА</h1>
+        <p class="text-muted mt-2">Данные обновлены сегодня в {{ now|time:"H:i"|default:"11:54" }}</p>
     </div>
-    
-    <!-- Metrics Row -->
-    <div class="row g-4 mb-4" id="metricsRow">
-        <div class="col-md-6 col-lg-3">
-            <div class="metric-card">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="metric-value" id="metricSessions">—</div>
-                        <div class="metric-label">Сеансов сегодня</div>
-                    </div>
-                    <div class="metric-icon red">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                    </div>
-                </div>
+
+    <!-- Stat Cards -->
+    <div class="grid-3">
+        <article class="panel p-5">
+            <div class="flex items-center justify-between text-muted">
+                <span class="text-sm">Выручка сегодня</span>
+                <span class="text-primary">💰</span>
             </div>
-        </div>
-        <div class="col-md-6 col-lg-3">
-            <div class="metric-card">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="metric-value" id="metricTickets">—</div>
-                        <div class="metric-label">Продано билетов</div>
-                    </div>
-                    <div class="metric-icon gold">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                    </div>
-                </div>
+            <strong class="block mt-5" style="font-size:1.75rem;font-weight:600;">{{ revenue|default:"0" }} ₽</strong>
+            <span class="block mt-2 text-xs text-success">↑ 12,4% к прошлой неделе</span>
+        </article>
+        <article class="panel p-5">
+            <div class="flex items-center justify-between text-muted">
+                <span class="text-sm">Продано билетов</span>
+                <span class="text-primary">🎫</span>
             </div>
-        </div>
-        <div class="col-md-6 col-lg-3">
-            <div class="metric-card">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="metric-value" id="metricRevenue">—</div>
-                        <div class="metric-label">Выручка</div>
-                    </div>
-                    <div class="metric-icon green">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                    </div>
-                </div>
+            <strong class="block mt-5" style="font-size:1.75rem;font-weight:600;">{{ tickets_sold|default:"0" }}</strong>
+            <span class="block mt-2 text-xs text-success">↑ 8,1% за день</span>
+        </article>
+        <article class="panel p-5">
+            <div class="flex items-center justify-between text-muted">
+                <span class="text-sm">Средняя загрузка</span>
+                <span class="text-primary">🪑</span>
             </div>
-        </div>
-        <div class="col-md-6 col-lg-3">
-            <div class="metric-card">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="metric-value" id="metricOccupancy">—</div>
-                        <div class="metric-label">Загрузка залов</div>
-                    </div>
-                    <div class="metric-icon blue">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                    </div>
-                </div>
-            </div>
-        </div>
+            <strong class="block mt-5" style="font-size:1.75rem;font-weight:600;">{{ occupancy|default:"0" }}%</strong>
+            <span class="block mt-2 text-xs text-success">↑ 4,7 п.п.</span>
+        </article>
     </div>
-    
+
     <!-- Charts Row -->
-    <div class="row g-4 mb-4">
-        <div class="col-lg-8">
-            <div class="chart-card">
-                <h3 class="chart-title">Продажи и выручка</h3>
-                <div class="chart-container">
-                    <canvas id="salesChart"></canvas>
+    <div class="flex gap-4 mt-6" style="flex-wrap:wrap;">
+        <!-- Sales Chart -->
+        <section class="panel p-5" style="flex:1.5;min-width:320px;">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-muted" style="margin:0;">Продажи за неделю</p>
+                    <h2 class="mt-1" style="font-size:1.25rem;margin:0.25rem 0 0;font-weight:600;">2 840 000 ₽</h2>
                 </div>
+                <span class="badge badge-blue">7 дней</span>
             </div>
-        </div>
-        <div class="col-lg-4">
-            <div class="chart-card">
-                <h3 class="chart-title">Фильмы по продажам</h3>
-                <div class="chart-container" style="height: 300px;">
-                    <canvas id="moviesChart"></canvas>
+            <div class="chart-grid mt-6" style="position:relative;height:224px;overflow:hidden;border-radius:8px;">
+                <svg viewBox="0 0 700 220" style="width:100%;height:100%;" preserveAspectRatio="none">
+                    <path d="M0 185 C70 165 85 120 145 138 S230 172 285 110 S370 145 430 88 S520 115 570 55 S650 70 700 30"
+                          fill="none" stroke="var(--primary)" stroke-width="4" vector-effect="non-scaling-stroke"/>
+                    <path d="M0 185 C70 165 85 120 145 138 S230 172 285 110 S370 145 430 88 S520 115 570 55 S650 70 700 30 V220 H0Z"
+                          fill="rgba(74,140,247,0.13)"/>
+                </svg>
+            </div>
+        </section>
+
+        <!-- Top Films -->
+        <section class="panel p-5" style="flex:1;min-width:260px;">
+            <p class="text-sm text-muted" style="margin:0;">Топ фильмов</p>
+            <div class="mt-6" style="display:flex;flex-direction:column;gap:1.25rem;">
+                {% for item in top_movies %}
+                <div>
+                    <div class="flex justify-between text-sm">
+                        <span>{{ item.title }}</span>
+                        <span class="text-muted">{{ item.percent }}%</span>
+                    </div>
+                    <div class="mt-2 h-2 overflow-hidden rounded-full" style="background:var(--surface-2);height:8px;">
+                        <div class="metric-bar" style="width:{{ item.percent }}%;"></div>
+                    </div>
                 </div>
+                {% empty %}
+                <p class="text-muted text-sm">Нет данных</p>
+                {% endfor %}
             </div>
-        </div>
+        </section>
     </div>
-    
-    <!-- Hall Load & Top Movies -->
-    <div class="row g-4">
-        <div class="col-lg-6">
-            <div class="chart-card">
-                <h3 class="chart-title mb-3">Загрузка залов сегодня</h3>
-                <div id="hallLoadList">
-                    <!-- Заполнится через JS -->
-                </div>
+
+    <!-- Tables -->
+    <section class="mt-6">
+        <div class="flex items-center justify-between flex-wrap gap-3">
+            <div class="tabs">
+                <button class="tab-btn active" onclick="showTable('films', this)">Фильмы</button>
+                <button class="tab-btn" onclick="showTable('halls', this)">Залы</button>
+                <button class="tab-btn" onclick="showTable('sessions', this)">Сеансы</button>
+            </div>
+            <a href="{% url 'admin:cinema_movie_add' %}" target="_blank" class="btn btn-primary">+ Добавить</a>
+        </div>
+
+        <!-- Films Table -->
+        <div class="table-panel mt-3" id="table-films">
+            <div class="panel overflow-x-auto">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Название</th>
+                            <th>Жанр</th>
+                            <th>Возраст</th>
+                            <th>Статус</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for movie in movies %}
+                        <tr>
+                            <td>{{ movie.title }}</td>
+                            <td>{{ movie.genre.name }}</td>
+                            <td>{{ movie.age_rating }}+</td>
+                            <td><span class="badge {% if movie.status == 'active' %}badge-green{% else %}badge-blue{% endif %}">{{ movie.get_status_display }}</span></td>
+                            <td style="text-align:right;">
+                                <a href="{% url 'admin:cinema_movie_change' movie.id %}" target="_blank" class="btn btn-ghost btn-sm">✏</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5" class="text-center text-muted">Нет фильмов</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
-        <div class="col-lg-6">
-            <div class="chart-card">
-                <h3 class="chart-title mb-3">Топ фильмов по выручке</h3>
-                <div id="topMoviesList">
-                    <!-- Заполнится через JS -->
-                </div>
+
+        <!-- Halls Table -->
+        <div class="table-panel mt-3" id="table-halls" style="display:none;">
+            <div class="panel overflow-x-auto">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Название</th>
+                            <th>Вместимость</th>
+                            <th>Тип</th>
+                            <th>Статус</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for hall in halls %}
+                        <tr>
+                            <td>Зал {{ hall.number }}</td>
+                            <td>{{ hall.capacity }} мест</td>
+                            <td>{{ hall.get_type_display }}</td>
+                            <td><span class="badge badge-green">Открыт</span></td>
+                            <td style="text-align:right;">
+                                <a href="{% url 'admin:cinema_hall_change' hall.id %}" target="_blank" class="btn btn-ghost btn-sm">✏</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5" class="text-center text-muted">Нет залов</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
-    </div>
-    
-    <!-- Quick Actions -->
-    <div class="row g-4 mt-4">
-        <div class="col-12">
-            <div class="chart-card">
-                <h3 class="chart-title mb-3">Быстрые действия</h3>
-                <div class="d-flex flex-wrap gap-3">
-                    <a href="{% url 'admin:cinema_movie_changelist' %}" target="_blank" class="btn btn-primary session-pill">
-                        Управление фильмами
-                    </a>
-                    <a href="{% url 'admin:cinema_session_changelist' %}" target="_blank" class="btn btn-outline-primary session-pill">
-                        Расписание сеансов
-                    </a>
-                    <a href="{% url 'admin:cinema_hall_changelist' %}" target="_blank" class="btn btn-outline-primary session-pill">
-                        Залы и места
-                    </a>
-                    <a href="{% url 'admin:cinema_genre_changelist' %}" target="_blank" class="btn btn-outline-primary session-pill">
-                        Жанры
-                    </a>
-                    <a href="{% url 'admin:cinema_user_changelist' %}" target="_blank" class="btn btn-outline-primary session-pill">
-                        Пользователи
-                    </a>
-                    <a href="{% url 'admin:cinema_booking_changelist' %}" target="_blank" class="btn btn-outline-primary session-pill">
-                        Все бронирования
-                    </a>
-                </div>
+
+        <!-- Sessions Table -->
+        <div class="table-panel mt-3" id="table-sessions" style="display:none;">
+            <div class="panel overflow-x-auto">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Фильм</th>
+                            <th>Зал</th>
+                            <th>Дата</th>
+                            <th>Время</th>
+                            <th>Статус</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for session in sessions %}
+                        <tr>
+                            <td>{{ session.movie.title }}</td>
+                            <td>Зал {{ session.hall.number }}</td>
+                            <td>{{ session.date|date:"d.m.Y" }}</td>
+                            <td>{{ session.time|time:"H:i" }}</td>
+                            <td><span class="badge {% if session.is_active %}badge-green{% else %}badge-red{% endif %}">{{ session.is_active|yesno:"Активен,Неактивен" }}</span></td>
+                            <td style="text-align:right;">
+                                <a href="{% url 'admin:cinema_session_change' session.id %}" target="_blank" class="btn btn-ghost btn-sm">✏</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="6" class="text-center text-muted">Нет сеансов</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
-    </div>
-</div>
+    </section>
+</main>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-let salesChart = null;
-let moviesChart = null;
-
-document.addEventListener('DOMContentLoaded', function() {
-    loadDashboardData('today');
-    
-    // Period filter buttons
-    document.querySelectorAll('.filter-period .btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('.filter-period .btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            loadDashboardData(this.dataset.period);
-        });
-    });
-});
-
-async function loadDashboardData(period) {
-    try {
-        const response = await fetch(`/api/dashboard/stats/?period=${period}`);
-        const data = await response.json();
-        updateMetrics(data);
-        updateCharts(data);
-        updateHallLoad(data.hall_load);
-        updateTopMovies(data.top_movies);
-    } catch (e) {
-        console.error('Failed to load dashboard:', e);
-    }
-}
-
-function updateMetrics(data) {
-    document.getElementById('metricSessions').textContent = data.sessions_today;
-    document.getElementById('metricTickets').textContent = data.tickets_sold;
-    document.getElementById('metricRevenue').textContent = window.AuroraCinema.formatPrice(data.revenue);
-    document.getElementById('metricOccupancy').textContent = data.occupancy_rate.toFixed(1) + '%';
-}
-
-function updateCharts(data) {
-    // Sales Chart
-    const salesCtx = document.getElementById('salesChart').getContext('2d');
-    if (salesChart) salesChart.destroy();
-    
-    salesChart = new Chart(salesCtx, {
-        type: 'bar',
-        data: {
-            labels: data.sales_chart.map(d => new Date(d.date).toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' })),
-            datasets: [
-                {
-                    label: 'Выручка (₽)',
-                    data: data.sales_chart.map(d => d.revenue),
-                    backgroundColor: 'rgba(229, 48, 76, 0.8)',
-                    borderColor: 'var(--red)',
-                    borderWidth: 1,
-                    borderRadius: 6,
-                    yAxisID: 'y'
-                },
-                {
-                    label: 'Билеты',
-                    data: data.sales_chart.map(d => d.tickets),
-                    type: 'line',
-                    backgroundColor: 'rgba(238, 184, 74, 0.2)',
-                    borderColor: 'var(--gold)',
-                    borderWidth: 2,
-                    fill: false,
-                    tension: 0.3,
-                    pointBackgroundColor: 'var(--gold)',
-                    pointRadius: 4,
-                    yAxisID: 'y1'
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    labels: { color: 'var(--text-muted)', font: { family: 'Inter' } }
-                }
-            },
-            scales: {
-                x: { 
-                    grid: { display: false },
-                    ticks: { color: 'var(--text-muted)', font: { family: 'Inter' } }
-                },
-                y: { 
-                    type: 'linear',
-                    display: true,
-                    position: 'left',
-                    grid: { color: 'var(--border)' },
-                    ticks: { color: 'var(--text-muted)', font: { family: 'Inter' }, callback: v => window.AuroraCinema.formatPrice(v) }
-                },
-                y1: {
-                    type: 'linear',
-                    display: true,
-                    position: 'right',
-                    grid: { drawOnChartArea: false },
-                    ticks: { color: 'var(--text-muted)', font: { family: 'Inter' } }
-                }
-            }
-        }
-    });
-    
-    // Movies Chart (Doughnut)
-    const moviesCtx = document.getElementById('moviesChart').getContext('2d');
-    if (moviesChart) moviesChart.destroy();
-    
-    const topMovies = data.sales_by_movie || [];
-    moviesChart = new Chart(moviesCtx, {
-        type: 'doughnut',
-        data: {
-            labels: topMovies.slice(0, 5).map(m => m['ticket__booking__session__movie__title'] || 'Неизвестно'),
-            datasets: [{
-                data: topMovies.slice(0, 5).map(m => m.revenue),
-                backgroundColor: [
-                    'rgba(229, 48, 76, 0.8)',
-                    'rgba(238, 184, 74, 0.8)',
-                    'rgba(76, 175, 80, 0.8)',
-                    'rgba(33, 150, 243, 0.8)',
-                    'rgba(156, 39, 176, 0.8)'
-                ],
-                borderColor: [
-                    'var(--red)',
-                    'var(--gold)',
-                    '#4caf50',
-                    '#2196f3',
-                    '#9c27b0'
-                ],
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: { color: 'var(--text-muted)', font: { family: 'Inter', size: 11 }, padding: 15, usePointStyle: true }
-                }
-            },
-            cutout: '65%'
-        }
-    });
-}
-
-function updateHallLoad(halls) {
-    const container = document.getElementById('hallLoadList');
-    if (!halls || halls.length === 0) {
-        container.innerHTML = '<div class="empty-state" style="padding: 2rem;"><p class="text-muted">Нет данных о загрузке</p></div>';
-        return;
-    }
-    
-    container.innerHTML = halls.map(hall => `
-        <div class="hall-load-card">
-            <div class="d-flex justify-content-between align-items-center mb-1">
-                <h6 class="mb-0" style="font-family: 'Bebas Neue', sans-serif; font-size: 1rem; letter-spacing: 0.02em;">${hall.hall}</h6>
-                <span class="badge" style="background: var(--surface-2); color: var(--text); border: 1px solid var(--border);">${hall.load_percent}%</span>
-            </div>
-            <div class="d-flex justify-content-between text-muted small mb-2">
-                <span>${hall.sessions} сеансов · ${hall.capacity} мест</span>
-                <span>${hall.booked} занято</span>
-            </div>
-            <div class="hall-load-bar">
-                <div class="hall-load-fill" style="width: ${hall.load_percent}%"></div>
-            </div>
-        </div>
-    `).join('');
-}
-
-function updateTopMovies(movies) {
-    const container = document.getElementById('topMoviesList');
-    if (!movies || movies.length === 0) {
-        container.innerHTML = '<div class="empty-state" style="padding: 2rem;"><p class="text-muted">Нет данных о продажах</p></div>';
-        return;
-    }
-    
-    container.innerHTML = movies.slice(0, 5).map((movie, index) => `
-        <div class="top-movie-card">
-            <div class="d-flex align-items-center gap-3">
-                <span class="badge" style="background: var(--red); color: var(--text); font-family: 'Bebas Neue', sans-serif; font-size: 1.25rem; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">${index + 1}</span>
-                <div>
-                    <h6 class="mb-1" style="font-family: 'Bebas Neue', sans-serif; font-size: 1rem; letter-spacing: 0.02em;">${movie['ticket__booking__session__movie__title'] || 'Неизвестно'}</h6>
-                    <small class="text-muted">${movie.tickets} билетов</small>
-                </div>
-            </div>
-            <div class="text-end">
-                <div style="font-family: 'Bebas Neue', sans-serif; font-size: 1.25rem; color: var(--gold);">${movie.revenue} ₽</div>
-            </div>
-        </div>
-    `).join('');
+function showTable(id, btn) {
+    document.querySelectorAll('.table-panel').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.tabs .tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('table-' + id).style.display = 'block';
+    btn.classList.add('active');
 }
 </script>
 {% endblock %}

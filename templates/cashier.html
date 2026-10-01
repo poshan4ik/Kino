@@ -1,518 +1,100 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Касса — АИС «Аврора»{% endblock %}
-
-{% block extra_css %}
-<style>
-    .cashier-search {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 14px;
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
-    }
-    .session-quick-card {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 1rem;
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-    .session-quick-card:hover {
-        border-color: var(--red);
-        background: var(--surface-2);
-    }
-    .session-quick-card.selected {
-        border-color: var(--red);
-        background: var(--surface-2);
-        box-shadow: 0 0 0 2px var(--red);
-    }
-    .seat-mini {
-        width: 28px;
-        height: 28px;
-        border-radius: 4px;
-        border: 2px solid var(--border);
-        background: var(--surface);
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.65rem;
-        font-weight: 600;
-    }
-    .seat-mini.vip { border-radius: 50%; }
-    .seat-mini.comfort { border-radius: 6px; }
-    .seat-mini.booked { background: var(--red-dim); border-color: var(--red-dim); color: var(--text-muted); cursor: not-allowed; }
-    .seat-mini.selected { background: var(--gold); border-color: var(--gold); color: var(--bg); }
-    .sale-form {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 14px;
-        padding: 1.5rem;
-    }
-    .ticket-preview {
-        background: linear-gradient(135deg, var(--surface-2) 0%, var(--surface) 100%);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 1.5rem;
-        margin-top: 1rem;
-    }
-</style>
-{% endblock %}
+{% block title %}Касса — Аврора{% endblock %}
 
 {% block content %}
-<div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 style="font-family: 'Bebas Neue', sans-serif; font-size: 2rem; letter-spacing: 0.02em; margin: 0;">Касса</h1>
-        <span class="badge" style="background: var(--surface-2); color: var(--gold); border: 1px solid var(--border); font-size: 0.875rem;">
-            Кассир: {{ user.get_full_name|default:user.username }}
-        </span>
+<main class="page-shell py-10">
+    <!-- Title -->
+    <div class="mb-8">
+        <div class="section-rule mb-5"></div>
+        <p class="eyebrow">Рабочее место</p>
+        <h1 style="font-size:clamp(2.5rem,5vw,3.5rem);margin:0;">КАССА</h1>
+        <p class="text-muted mt-2">Смена №184 · Кассир: {{ user.get_full_name|default:user.username }}</p>
     </div>
-    
-    <div class="row g-4">
-        <!-- Left: Session Search & Selection -->
-        <div class="col-lg-7">
-            <!-- Search -->
-            <div class="cashier-search">
-                <h5 style="font-family: 'Bebas Neue', sans-serif; font-size: 1.125rem; letter-spacing: 0.02em; margin-bottom: 1rem;">Быстрый поиск сеанса</h5>
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label">Дата</label>
-                        <input type="date" class="form-control" id="searchDate" value="{{ today|date:'Y-m-d' }}">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Фильм</label>
-                        <select class="form-select" id="searchMovie">
-                            <option value="">Все фильмы</option>
-                            {% for movie in movies %}
-                            <option value="{{ movie.id }}">{{ movie.title }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-4 d-flex align-items-end">
-                        <button class="btn btn-primary session-pill w-100" id="searchBtn">Найти</button>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Sessions List -->
-            <div id="sessionsList">
-                {% if sessions %}
-                    <div class="row g-3" id="sessionsGrid">
-                        {% for session in sessions %}
-                        <div class="col-md-6">
-                            <div class="session-quick-card" data-session-id="{{ session.id }}">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <h6 class="mb-0" style="font-family: 'Bebas Neue', sans-serif; font-size: 1rem; letter-spacing: 0.02em;">{{ session.movie.title|truncatechars:30 }}</h6>
-                                    <span class="badge" style="background: {% if session.hall.type == 'IMAX' %}rgba(238,184,74,0.2); color: var(--gold); border-color: var(--gold); {% elif session.hall.type == 'VIP' %}rgba(229,48,76,0.2); color: var(--red); border-color: var(--red); {% else %}var(--surface-2); color: var(--text-muted); border-color: var(--border); {% endif %}; font-size: 0.7rem;">
-                                        {{ session.hall.get_type_display }}
-                                    </span>
-                                </div>
-                                <div class="d-flex flex-wrap gap-1 mb-2 text-muted small">
-                                    <span>{{ session.date|date:"d EEEE" }} в {{ session.time|time:"H:i" }}</span>
-                                    <span>Зал {{ session.hall.number }}</span>
-                                </div>
-                                <div class="d-flex gap-1 flex-wrap">
-                                    <span class="seat-mini {% if 'vip' in session.hall.seats.all|first.category|default:'' %}vip{% endif %}">S</span>
-                                    <span class="seat-mini comfort">C</span>
-                                    <span class="seat-mini">S</span>
-                                    <span class="text-muted small ms-auto">{{ session.get_available_seats.count }} свободно</span>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                {% else %}
-                    <div class="empty-state" style="padding: 3rem;">
-                        <div class="empty-state-icon">🎬</div>
-                        <h3 class="empty-state-title">Сеансов не найдено</h3>
-                        <p>Измените параметры поиска</p>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-        
-        <!-- Right: Sale Form -->
-        <div class="col-lg-5">
-            <div class="sale-form" id="saleForm" style="display: none;">
-                <h5 style="font-family: 'Bebas Neue', sans-serif; font-size: 1.125rem; letter-spacing: 0.02em; margin-bottom: 1rem;">Продажа билета</h5>
-                
-                <div id="selectedSessionInfo" class="mb-3 p-3" style="background: var(--bg); border-radius: 8px;">
-                    <h6 class="mb-1" id="saleMovieTitle"></h6>
-                    <div class="text-muted small" id="saleSessionDetails"></div>
-                </div>
-                
-                <!-- Mini Hall Schema -->
-                <div class="mb-3">
-                    <label class="form-label">Выбор мест</label>
-                    <div class="hall-schema" id="saleHallSchema" style="padding: 1rem; max-height: 300px; overflow-y: auto;">
-                        <!-- Заполнится через JS -->
-                    </div>
-                </div>
-                
-                <form method="post" action="{% url 'cashier_sell' %}" id="saleSubmitForm">
-                    {% csrf_token %}
-                    <input type="hidden" name="session_id" id="saleSessionId">
-                    <input type="hidden" name="seats" id="saleSeats">
-                    <input type="hidden" name="method" id="saleMethod" value="cash">
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Способ оплаты</label>
-                        <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-gold session-pill flex-fill method-btn active" data-method="cash">Наличные</button>
-                            <button type="button" class="btn btn-outline-primary session-pill flex-fill method-btn" data-method="card">Карта</button>
-                            <button type="button" class="btn btn-outline-primary session-pill flex-fill method-btn" data-method="online">Онлайн</button>
-                        </div>
-                    </div>
-                    
-                    <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-primary session-pill" id="saleSubmitBtn" disabled>
-                            Продать билет
-                        </button>
-                        <button type="button" class="btn btn-outline-primary session-pill" id="saleCancelBtn">
-                            Отмена
-                        </button>
-                    </div>
-                </form>
-                
-                <!-- Ticket Preview -->
-                <div class="ticket-preview" id="ticketPreview" style="display: none;">
-                    <h6 style="font-family: 'Bebas Neue', sans-serif; font-size: 1rem; letter-spacing: 0.02em; margin-bottom: 1rem;">Электронный билет</h6>
-                    <div class="text-center">
-                        <div class="ticket-barcode" id="previewBarcode">BARCODE</div>
-                        <div class="mt-2 text-muted small" id="previewDetails"></div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Empty State -->
-            <div class="sale-form text-center" id="saleEmptyState">
-                <div class="empty-state-icon" style="font-size: 3rem; margin-bottom: 1rem;">🎫</div>
-                <h5 class="empty-state-title">Выберите сеанс</h5>
-                <p class="text-muted">Найдите сеанс слева и начните продажу</p>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Refund Section -->
-    <div class="row mt-5">
-        <div class="col-12">
-            <div class="sale-form">
-                <h5 style="font-family: 'Bebas Neue', sans-serif; font-size: 1.125rem; letter-spacing: 0.02em; margin-bottom: 1rem;">Возврат билета</h5>
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label">Штрихкод билета</label>
-                        <input type="text" class="form-control" id="refundBarcode" placeholder="Введите или отсканируйте штрихкод">
-                    </div>
-                    <div class="col-md-3 d-flex align-items-end">
-                        <button class="btn btn-outline-primary session-pill w-100" id="refundCheckBtn">Проверить</button>
-                    </div>
-                    <div class="col-md-3 d-flex align-items-end">
-                        <button class="btn btn-danger session-pill w-100" id="refundConfirmBtn" disabled>Вернуть</button>
-                    </div>
-                </div>
-                <div id="refundInfo" class="mt-3" style="display: none;"></div>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
 
-{% block extra_js %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    let selectedSession = null;
-    let selectedSeats = new Set();
-    const maxSeats = 8;
-    
-    // Session card selection
-    document.querySelectorAll('.session-quick-card').forEach(card => {
-        card.addEventListener('click', function() {
-            document.querySelectorAll('.session-quick-card').forEach(c => c.classList.remove('selected'));
-            this.classList.add('selected');
-            loadSessionForSale(this.dataset.sessionId);
-        });
-    });
-    
-    // Search
-    document.getElementById('searchBtn').addEventListener('click', searchSessions);
-    document.getElementById('searchDate').addEventListener('change', searchSessions);
-    document.getElementById('searchMovie').addEventListener('change', searchSessions);
-    
-    // Payment method buttons
-    document.querySelectorAll('.method-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            document.getElementById('saleMethod').value = this.dataset.method;
-        });
-    });
-    
-    // Cancel sale
-    document.getElementById('saleCancelBtn').addEventListener('click', resetSaleForm);
-    
-    // Refund
-    document.getElementById('refundCheckBtn').addEventListener('click', checkRefund);
-    document.getElementById('refundConfirmBtn').addEventListener('click', processRefund);
-    
-    async function searchSessions() {
-        const date = document.getElementById('searchDate').value;
-        const movieId = document.getElementById('searchMovie').value;
-        
-        const params = new URLSearchParams();
-        if (date) params.append('date', date);
-        if (movieId) params.append('movie', movieId);
-        
-        try {
-            const response = await fetch(`/api/sessions/by_date/?${params}`);
-            const sessions = await response.json();
-            renderSessions(sessions);
-        } catch (e) {
-            console.error(e);
-        }
-    }
-    
-    function renderSessions(sessions) {
-        const container = document.getElementById('sessionsGrid');
-        if (!container) return;
-        
-        if (sessions.length === 0) {
-            container.innerHTML = '<div class="col-12 empty-state" style="padding: 3rem;"><div class="empty-state-icon">🎬</div><h3 class="empty-state-title">Сеансов не найдено</h3></div>';
-            return;
-        }
-        
-        container.innerHTML = sessions.map(s => `
-            <div class="col-md-6">
-                <div class="session-quick-card" data-session-id="${s.id}">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <h6 class="mb-0" style="font-family: 'Bebas Neue', sans-serif; font-size: 1rem; letter-spacing: 0.02em;">${s.movie_title}</h6>
-                        <span class="badge" style="background: ${s.hall_type === 'IMAX' ? 'rgba(238,184,74,0.2)' : s.hall_type === 'VIP' ? 'rgba(229,48,76,0.2)' : 'var(--surface-2)'}; color: ${s.hall_type === 'IMAX' ? 'var(--gold)' : s.hall_type === 'VIP' ? 'var(--red)' : 'var(--text-muted)'}; border-color: ${s.hall_type === 'IMAX' ? 'var(--gold)' : s.hall_type === 'VIP' ? 'var(--red)' : 'var(--border)'}; font-size: 0.7rem;">
-                            ${s.hall_type}
+    <div class="flex gap-6" style="align-items:flex-start;flex-wrap:wrap;">
+        <!-- Left: Sessions -->
+        <section style="flex:1;min-width:300px;">
+            <!-- Search -->
+            <div class="panel p-4 flex gap-3" style="flex-wrap:wrap;align-items:center;">
+                <div class="input-group" style="flex:1;min-width:200px;position:relative;">
+                    <span class="input-group-icon">🔍</span>
+                    <input type="text" class="form-control" style="height:44px;padding-left:2.5rem;" placeholder="Фильм, номер заказа или билет">
+                </div>
+                <button class="btn btn-outline" style="height:44px;">📅 Сегодня</button>
+            </div>
+
+            <!-- Film cards -->
+            <div class="flex flex-col gap-3 mt-5">
+                {% for session in sessions %}
+                <article class="panel p-4">
+                    <div class="flex items-center justify-between flex-wrap gap-3">
+                        <div>
+                            <h2 style="font-size:1.5rem;margin:0;">{{ session.movie.title }}</h2>
+                            <p class="text-xs text-muted" style="margin:0.25rem 0 0;">
+                                Зал {{ session.hall.number }} · {{ session.hall.get_type_display }} · {{ session.movie.duration }} мин
+                            </p>
+                        </div>
+                        {% if forloop.first %}
+                            <span class="badge badge-green">Идёт продажа</span>
+                        {% else %}
+                            <span class="badge badge-blue">Доступно</span>
+                        {% endif %}
+                    </div>
+                    <div class="flex flex-wrap gap-2 mt-4">
+                        <button class="session-pill selected">{{ session.time|time:"H:i" }}</button>
+                        <span class="text-xs text-muted flex items-center gap-2" style="margin-left:auto;">
+                            {{ session.get_available_seats.count }} свободно
                         </span>
                     </div>
-                    <div class="d-flex flex-wrap gap-1 mb-2 text-muted small">
-                        <span>${new Date(s.date).toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' })} в ${s.time}</span>
-                        <span>Зал ${s.hall_number}</span>
+                    <div class="mt-3">
+                        <a href="#" class="btn btn-outline btn-sm">Выбрать места</a>
                     </div>
-                    <div class="d-flex gap-1 flex-wrap">
-                        <span class="seat-mini">S</span>
-                        <span class="seat-mini comfort">C</span>
-                        <span class="seat-mini vip">V</span>
-                        <span class="text-muted small ms-auto">${s.available_seats_count} свободно</span>
-                    </div>
+                </article>
+                {% empty %}
+                <div class="empty-state panel">
+                    <p>Сеансов на сегодня нет</p>
                 </div>
+                {% endfor %}
             </div>
-        `).join('');
-        
-        // Re-attach click handlers
-        container.querySelectorAll('.session-quick-card').forEach(card => {
-            card.addEventListener('click', function() {
-                container.querySelectorAll('.session-quick-card').forEach(c => c.classList.remove('selected'));
-                this.classList.add('selected');
-                loadSessionForSale(this.dataset.sessionId);
-            });
-        });
-    }
-    
-    async function loadSessionForSale(sessionId) {
-        try {
-            const response = await fetch(`/api/sessions/${sessionId}/`);
-            selectedSession = await response.json();
-            
-            document.getElementById('saleEmptyState').style.display = 'none';
-            document.getElementById('saleForm').style.display = 'block';
-            document.getElementById('ticketPreview').style.display = 'none';
-            
-            document.getElementById('saleMovieTitle').textContent = selectedSession.movie_title;
-            document.getElementById('saleSessionDetails').innerHTML = 
-                `${new Date(selectedSession.date).toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' })} в ${selectedSession.time} · Зал ${selectedSession.hall_number} (${selectedSession.hall_type})`;
-            
-            document.getElementById('saleSessionId').value = selectedSession.id;
-            selectedSeats.clear();
-            
-            renderSaleHallSchema(selectedSession.seats_layout);
-            updateSaleForm();
-        } catch (e) {
-            console.error(e);
-        }
-    }
-    
-    function renderSaleHallSchema(layout) {
-        const container = document.getElementById('saleHallSchema');
-        let html = '';
-        
-        for (const [rowKey, seats] of Object.entries(layout)) {
-            html += `<div class="seat-row mb-2"><span class="seat-row-label">${rowKey.replace('row_', 'Ряд ')}</span>`;
-            seats.forEach(seat => {
-                const cls = ['seat-mini'];
-                if (seat.category === 'vip') cls.push('vip');
-                else if (seat.category === 'comfort') cls.push('comfort');
-                if (seat.is_booked) cls.push('booked');
-                
-                html += `<button type="button" class="${cls.join(' ')}" 
-                    data-seat-id="${seat.id}" 
-                    data-price="${seat.price}"
-                    ${seat.is_booked ? 'disabled' : ''}
-                    aria-label="Ряд ${seat.row}, Место ${seat.number}">${seat.number}</button>`;
-            });
-            html += '</div>';
-        }
-        
-        container.innerHTML = html;
-        
-        // Attach seat click handlers
-        container.querySelectorAll('.seat-mini:not(.booked)').forEach(seat => {
-            seat.addEventListener('click', function() {
-                const seatId = this.dataset.seatId;
-                
-                if (this.classList.contains('selected')) {
-                    this.classList.remove('selected');
-                    selectedSeats.delete(seatId);
-                } else {
-                    if (selectedSeats.size >= maxSeats) {
-                        window.AuroraCinema.showToast(`Максимум ${maxSeats} мест за раз`, 'warning');
-                        return;
-                    }
-                    this.classList.add('selected');
-                    selectedSeats.add(seatId);
-                }
-                updateSaleForm();
-            });
-        });
-    }
-    
-    function updateSaleForm() {
-        const count = selectedSeats.size;
-        document.getElementById('saleSeats').value = Array.from(selectedSeats).join(',');
-        document.getElementById('saleSubmitBtn').disabled = count === 0;
-        document.getElementById('saleSubmitBtn').textContent = count > 0 ? `Продать ${count} билетов` : 'Продать билет';
-    }
-    
-    function resetSaleForm() {
-        selectedSession = null;
-        selectedSeats.clear();
-        document.getElementById('saleForm').style.display = 'none';
-        document.getElementById('saleEmptyState').style.display = 'block';
-        document.getElementById('ticketPreview').style.display = 'none';
-        document.querySelectorAll('.session-quick-card').forEach(c => c.classList.remove('selected'));
-    }
-    
-    // Handle sale form submit
-    document.getElementById('saleSubmitForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const formData = new FormData(this);
-        const data = Object.fromEntries(formData);
-        
-        try {
-            const response = await fetch('/api/bookings/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': window.AuroraCinema.getCSRFToken(),
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: JSON.stringify({
-                    session: data.session_id,
-                    seat: data.seats.split(',')[0] // Для множественных мест нужно циклом
-                })
-            });
-            
-            const booking = await response.json();
-            
-            if (response.ok) {
-                // Создаем оплату
-                const paymentResponse = await fetch('/api/payments/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': window.AuroraCinema.getCSRFToken(),
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    body: JSON.stringify({
-                        ticket: booking.ticket.id,
-                        amount: booking.ticket.price,
-                        method: data.method
-                    })
-                });
-                
-                if (paymentResponse.ok) {
-                    window.AuroraCinema.showToast('Билет продан!', 'success');
-                    showTicketPreview(booking.ticket);
-                }
-            } else {
-                window.AuroraCinema.showToast(booking.detail || 'Ошибка продажи', 'danger');
-            }
-        } catch (e) {
-            window.AuroraCinema.showToast('Ошибка сети', 'danger');
-        }
-    });
-    
-    function showTicketPreview(ticket) {
-        document.getElementById('previewBarcode').textContent = ticket.barcode;
-        document.getElementById('previewDetails').innerHTML = 
-            `${selectedSession.movie_title} · ${new Date(selectedSession.date).toLocaleDateString('ru-RU')} ${selectedSession.time} · Зал ${selectedSession.hall_number} · Ряд/Место из брони`;
-        document.getElementById('ticketPreview').style.display = 'block';
-    }
-    
-    async function checkRefund() {
-        const barcode = document.getElementById('refundBarcode').value.trim();
-        if (!barcode) return;
-        
-        try {
-            const response = await fetch(`/api/tickets/${barcode}/`);
-            const ticket = await response.json();
-            
-            if (response.ok) {
-                document.getElementById('refundInfo').style.display = 'block';
-                document.getElementById('refundInfo').innerHTML = `
-                    <div class="alert alert-info">
-                        <strong>${ticket.booking.session.movie_title}</strong><br>
-                        ${new Date(ticket.booking.session.date).toLocaleDateString('ru-RU')} в ${ticket.booking.session.time} · Зал ${ticket.booking.session.hall_number}<br>
-                        Ряд ${ticket.booking.seat.row}, Место ${ticket.booking.seat.number}<br>
-                        Цена: ${ticket.price} ₽ · Статус: ${ticket.status}
-                    </div>
-                `;
-                if (ticket.status === 'active' || ticket.status === 'paid') {
-                    document.getElementById('refundConfirmBtn').disabled = false;
-                    document.getElementById('refundConfirmBtn').dataset.ticketId = ticket.id;
-                }
-            } else {
-                window.AuroraCinema.showToast(ticket.detail || 'Билет не найден', 'danger');
-            }
-        } catch (e) {
-            window.AuroraCinema.showToast('Ошибка сети', 'danger');
-        }
-    }
-    
-    async function processRefund() {
-        const ticketId = document.getElementById('refundConfirmBtn').dataset.ticketId;
-        if (!ticketId) return;
-        
-        if (!confirm('Подтверждаете возврат билета? Средства вернются покупателю.')) return;
-        
-        try {
-            const response = await fetch(`/api/tickets/${ticketId}/`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': window.AuroraCinema.getCSRFToken(),
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: JSON.stringify({ status: 'refunded' })
-            });
-            
-            if (response.ok) {
-                window.AuroraCinema.showToast('Билет возвращён', 'success');
-                document.getElementById('refundBarcode').value = '';
-                document.getElementById('refundInfo').style.display = 'none';
-                document.getElementById('refundConfirmBtn').disabled = true;
-            }
-        } catch (e) {
-            window.AuroraCinema.showToast('Ошибка сети', 'danger');
-        }
-    }
-});
-</script>
+        </section>
+
+        <!-- Right: Order -->
+        <aside class="panel p-5" style="width:330px;min-width:280px;position:sticky;top:76px;">
+            <p class="eyebrow">Текущий заказ</p>
+            <h2 style="font-size:1.75rem;margin:0;">—</h2>
+            <p class="text-sm text-muted mt-1" style="margin:0.25rem 0 0;">Выберите сеанс слева</p>
+
+            <div class="mt-5 border-t border-b text-sm" style="padding:1rem 0;">
+                <p class="text-muted">Места появятся после выбора</p>
+            </div>
+
+            <div class="flex justify-between border-t mt-4 pt-4">
+                <b>К оплате</b>
+                <b class="text-xl">0 ₽</b>
+            </div>
+
+            <div class="grid grid-2 gap-2 mt-5">
+                <button class="btn btn-primary" disabled>💳 Картой</button>
+                <button class="btn btn-secondary" disabled>💵 Наличными</button>
+            </div>
+            <button class="btn btn-outline w-full mt-2" disabled>🎫 Продать билет</button>
+            <button class="btn btn-danger w-full mt-5" disabled>↩ Оформить возврат</button>
+        </aside>
+    </div>
+
+    <!-- Return Section -->
+    <div class="mt-8">
+        <p class="eyebrow">Возврат</p>
+        <div class="panel p-4 flex gap-3" style="flex-wrap:wrap;align-items:center;">
+            <div class="input-group" style="flex:1;min-width:250px;position:relative;">
+                <span class="input-group-icon">▮▮▯</span>
+                <input type="text" class="form-control" style="height:44px;padding-left:2.5rem;" placeholder="Штрихкод билета" id="refundBarcode">
+            </div>
+            <button class="btn btn-outline" style="height:44px;">Проверить</button>
+            <button class="btn btn-danger" style="height:44px;" disabled>Вернуть</button>
+        </div>
+    </div>
+</main>
 {% endblock %}

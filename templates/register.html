@@ -1,197 +1,86 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Регистрация — АИС «Аврора»{% endblock %}
+{% block title %}Регистрация — Аврора{% endblock %}
 
 {% block content %}
-<div class="auth-container">
-    <div class="auth-card">
-        <div class="text-center mb-4">
-            <a href="{% url 'home' %}" class="navbar-brand d-inline-flex align-items-center gap-2">
-                <span class="logo-icon" style="font-family: 'Bebas Neue', sans-serif; font-size: 1.75rem; letter-spacing: 0.05em; color: var(--text);">КИНО</span>
-                <span class="logo-accent" style="font-family: 'Bebas Neue', sans-serif; font-size: 1.75rem; letter-spacing: 0.05em; color: var(--red);">АВРОРА</span>
-            </a>
+<main class="auth-shell flex items-center justify-center px-4 py-16">
+    <section style="width:100%;max-width:420px;">
+        <div class="mb-8">
+            <div class="section-rule mb-5"></div>
+            <p class="eyebrow">Добро пожаловать</p>
+            <h1 style="font-size:clamp(2.5rem,5vw,3.5rem);margin:0;">РЕГИСТРАЦИЯ</h1>
+            <p class="text-muted mt-2">Создайте аккаунт — билеты всегда будут под рукой.</p>
         </div>
-        
-        <h1 class="auth-title">Создать аккаунт</h1>
-        <p class="auth-subtitle">Присоединяйтесь к АИС «Аврора» и покупайте билеты онлайн</p>
-        
-        <form method="post" class="auth-form" novalidate>
+
+        <form method="post" class="panel p-6" style="display:flex;flex-direction:column;gap:1rem;" novalidate>
             {% csrf_token %}
-            
+
             {% if form.non_field_errors %}
-                <div class="alert alert-danger session-pill">
+                <div class="alert alert-danger">
                     {% for error in form.non_field_errors %}{{ error }}{% endfor %}
                 </div>
             {% endif %}
-            
-            <div class="row g-3">
-                <div class="col-md-6">
-                    <label for="{{ form.first_name.id_for_label }}" class="form-label">Имя</label>
+
+            <label class="text-sm">Имя
+                <div class="relative mt-2">
+                    <span class="input-group-icon">👤</span>
                     {{ form.first_name }}
-                    {% if form.first_name.errors %}
-                        <div class="text-danger small mt-1">{{ form.first_name.errors.0 }}</div>
-                    {% endif %}
                 </div>
-                <div class="col-md-6">
-                    <label for="{{ form.last_name.id_for_label }}" class="form-label">Фамилия</label>
+                {% if form.first_name.errors %}<span class="text-destructive text-xs">{{ form.first_name.errors.0 }}</span>{% endif %}
+            </label>
+
+            <label class="text-sm">Фамилия
+                <div class="relative mt-2">
+                    <span class="input-group-icon">👤</span>
                     {{ form.last_name }}
-                    {% if form.last_name.errors %}
-                        <div class="text-danger small mt-1">{{ form.last_name.errors.0 }}</div>
-                    {% endif %}
                 </div>
-            </div>
-            
-            <div class="form-group">
-                <label for="{{ form.username.id_for_label }}" class="form-label">Логин</label>
-                {{ form.username }}
-                {% if form.username.errors %}
-                    <div class="text-danger small mt-1">{{ form.username.errors.0 }}</div>
-                {% endif %}
-                <div class="form-text text-muted small">Минимум 3 символа. Только латиница, цифры и @/./+/-/_</div>
-            </div>
-            
-            <div class="form-group">
-                <label for="{{ form.email.id_for_label }}" class="form-label">Email</label>
-                {{ form.email }}
-                {% if form.email.errors %}
-                    <div class="text-danger small mt-1">{{ form.email.errors.0 }}</div>
-                {% endif %}
-            </div>
-            
-            <div class="form-group">
-                <label for="{{ form.phone.id_for_label }}" class="form-label">Телефон (необязательно)</label>
-                {{ form.phone }}
-                {% if form.phone.errors %}
-                    <div class="text-danger small mt-1">{{ form.phone.errors.0 }}</div>
-                {% endif %}
-            </div>
-            
-            <div class="form-group">
-                <label for="{{ form.password1.id_for_label }}" class="form-label">Пароль</label>
-                <div class="input-group">
+                {% if form.last_name.errors %}<span class="text-destructive text-xs">{{ form.last_name.errors.0 }}</span>{% endif %}
+            </label>
+
+            <label class="text-sm">Email
+                <div class="relative mt-2">
+                    <span class="input-group-icon">✉</span>
+                    {{ form.email }}
+                </div>
+                {% if form.email.errors %}<span class="text-destructive text-xs">{{ form.email.errors.0 }}</span>{% endif %}
+            </label>
+
+            <label class="text-sm">Пароль
+                <div class="relative mt-2">
+                    <span class="input-group-icon">🔒</span>
                     {{ form.password1 }}
-                    <button type="button" class="btn btn-outline-secondary input-group-text" id="togglePassword1" style="background: var(--surface); border-color: var(--border); color: var(--text-muted);">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="eyeIcon1"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                    </button>
                 </div>
-                {% if form.password1.errors %}
-                    <div class="text-danger small mt-1">{{ form.password1.errors.0 }}</div>
-                {% endif %}
-                <div class="form-text text-muted small">Минимум 8 символов, хотя бы одна буква и одна цифра</div>
-            </div>
-            
-            <div class="form-group">
-                <label for="{{ form.password2.id_for_label }}" class="form-label">Подтверждение пароля</label>
-                <div class="input-group">
+                {% if form.password1.errors %}<span class="text-destructive text-xs">{{ form.password1.errors.0 }}</span>{% endif %}
+            </label>
+
+            <label class="text-sm">Повторите пароль
+                <div class="relative mt-2">
+                    <span class="input-group-icon">🔒</span>
                     {{ form.password2 }}
-                    <button type="button" class="btn btn-outline-secondary input-group-text" id="togglePassword2" style="background: var(--surface); border-color: var(--border); color: var(--text-muted);">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="eyeIcon2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                    </button>
                 </div>
-                {% if form.password2.errors %}
-                    <div class="text-danger small mt-1">{{ form.password2.errors.0 }}</div>
-                {% endif %}
-            </div>
-            
-            <div class="form-group">
-                <label class="form-check">
-                    <input type="checkbox" name="terms" class="form-check-input" required style="border-color: var(--border);">
-                    <span class="form-check-label text-muted small">
-                        Согласен с <a href="#" class="text-gold">условиями использования</a> и <a href="#" class="text-gold">политикой конфиденциальности</a>
-                    </span>
-                </label>
-            </div>
-            
-            <button type="submit" class="btn btn-primary w-100 session-pill mt-3" style="padding: 0.875rem; font-size: 1rem;">
-                Зарегистрироваться
-            </button>
+                {% if form.password2.errors %}<span class="text-destructive text-xs">{{ form.password2.errors.0 }}</span>{% endif %}
+            </label>
+
+            <label class="flex items-start gap-3 text-xs text-muted" style="align-items:flex-start;">
+                <input type="checkbox" name="terms" required style="margin-top:2px;accent-color:var(--primary);">
+                Я принимаю правила сервиса и согласен на обработку данных
+            </label>
+
+            <button type="submit" class="btn btn-primary w-full h-12 rounded-full">Создать аккаунт</button>
+
+            <p class="text-center text-sm text-muted" style="margin:0;">
+                Уже есть аккаунт? <a href="{% url 'login' %}">Войти</a>
+            </p>
         </form>
-        
-        <div class="auth-footer">
-            <p class="mb-0">Уже есть аккаунт? <a href="{% url 'login' %}{% if next %}?next={{ next }}{% endif %}">Войти</a></p>
-        </div>
-    </div>
-</div>
+    </section>
+</main>
 {% endblock %}
 
-{% block extra_js %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Toggle password visibility
-    document.querySelectorAll('[id^="togglePassword"]').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const targetId = this.id.replace('togglePassword', 'id_password');
-            const input = document.getElementById(targetId);
-            const icon = this.querySelector('svg');
-            
-            if (input) {
-                const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
-                input.setAttribute('type', type);
-                
-                if (type === 'text') {
-                    icon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
-                } else {
-                    icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
-                }
-            }
-        });
-    });
-    
-    // Focus first input
-    const firstInput = document.querySelector('.auth-form input:not([type="hidden"])');
-    if (firstInput) firstInput.focus();
-    
-    // Password strength indicator
-    const passwordInput = document.getElementById('id_password1');
-    if (passwordInput) {
-        passwordInput.addEventListener('input', function() {
-            const strength = calculatePasswordStrength(this.value);
-            updateStrengthIndicator(strength);
-        });
-    }
-});
-
-function calculatePasswordStrength(password) {
-    let score = 0;
-    if (password.length >= 8) score++;
-    if (password.length >= 12) score++;
-    if (/[A-Z]/.test(password)) score++;
-    if (/[a-z]/.test(password)) score++;
-    if (/[0-9]/.test(password)) score++;
-    if (/[^A-Za-z0-9]/.test(password)) score++;
-    return score;
-}
-
-function updateStrengthIndicator(score) {
-    let indicator = document.getElementById('passwordStrength');
-    if (!indicator) {
-        indicator = document.createElement('div');
-        indicator.id = 'passwordStrength';
-        indicator.className = 'mt-2';
-        indicator.innerHTML = `
-            <div class="d-flex gap-1" style="height: 4px;">
-                <div class="strength-bar flex-fill" style="background: var(--border); border-radius: 2px;"></div>
-                <div class="strength-bar flex-fill" style="background: var(--border); border-radius: 2px;"></div>
-                <div class="strength-bar flex-fill" style="background: var(--border); border-radius: 2px;"></div>
-                <div class="strength-bar flex-fill" style="background: var(--border); border-radius: 2px;"></div>
-                <div class="strength-bar flex-fill" style="background: var(--border); border-radius: 2px;"></div>
-            </div>
-            <small class="text-muted d-block mt-1" id="strengthText"></small>
-        `;
-        passwordInput.parentElement.parentElement.appendChild(indicator);
-    }
-    
-    const bars = indicator.querySelectorAll('.strength-bar');
-    const text = indicator.querySelector('#strengthText');
-    const colors = ['var(--red)', 'var(--red)', 'var(--gold)', '#4caf50', '#4caf50'];
-    const labels = ['Очень слабый', 'Слабый', 'Средний', 'Сильный', 'Очень сильный'];
-    
-    bars.forEach((bar, i) => {
-        bar.style.background = i < score ? colors[score - 1] : 'var(--border)';
-    });
-    
-    if (text) text.textContent = labels[score - 1] || '';
-}
-</script>
+{% block extra_css %}
+<style>
+    .auth-shell { min-height: calc(100vh - 56px); }
+    .auth-shell .form-control { border: none; background: transparent; padding: 0 1rem 0 2.5rem; height: auto; padding-block: 0; color: var(--text); }
+    .auth-shell label { display: block; }
+</style>
 {% endblock %}
