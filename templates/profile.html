@@ -1,118 +1,103 @@
 {% extends 'base.html' %}
 {% load static %}
-
 {% block title %}Мои билеты — Аврора{% endblock %}
 
 {% block content %}
-<main class="page-shell py-10">
-    <!-- Title -->
-    <div class="mb-8">
-        <div class="section-rule mb-5"></div>
-        <p class="eyebrow">Личный кабинет</p>
-        <h1 style="font-size:clamp(2.5rem,5vw,3.5rem);margin:0;">МОЙ ПРОФИЛЬ</h1>
-        <p class="text-muted mt-2">{{ user.get_full_name|default:user.username }} · {{ user.email|default:user.username }}</p>
-    </div>
+<main class="page-shell" style="padding:2.5rem 0 3.5rem;">
+    <div class="section-rule" style="margin-bottom:1.25rem;"></div>
+    <p class="eyebrow">Личный кабинет</p>
+    <h1 style="font-family:'Bebas Neue',sans-serif;font-size:clamp(2.5rem,5vw,3.5rem);line-height:1;color:var(--text);margin:0;">МОЙ ПРОФИЛЬ</h1>
+    <p style="margin:.5rem 0 0;font-size:.875rem;color:var(--text-muted);">{{ user.get_full_name|default:user.username }} · {{ user.email|default:"" }}</p>
 
-    <div class="flex gap-8" style="align-items:flex-start;flex-wrap:wrap;">
+    <div style="display:grid;gap:2rem;grid-template-columns:230px 1fr;align-items:start;margin-top:2rem;" class="profile-grid">
         <!-- Sidebar -->
-        <aside class="flex gap-2" style="min-width:230px;flex-wrap:wrap;flex-direction:column;" id="profileSidebar">
-            <button class="tab-btn active" onclick="showTab('tickets', this)">🎫 Активные билеты</button>
-            <button class="tab-btn" onclick="showTab('history', this)">📖 История</button>
-            <button class="tab-btn" onclick="showTab('payments', this)">💳 Платежи</button>
-            <button class="tab-btn" onclick="showTab('settings', this)">⚙ Настройки</button>
+        <aside style="display:flex;gap:.5rem;overflow-x:auto;flex-wrap:wrap;" id="pTabs">
+            <button class="tab-btn active" onclick="stab('t',this)" style="justify-content:flex-start;">
+                🎫 Активные билеты
+            </button>
+            <button class="tab-btn" onclick="stab('h',this)" style="justify-content:flex-start;">
+                📖 История
+            </button>
+            <button class="tab-btn" onclick="stab('p',this)" style="justify-content:flex-start;">
+                💳 Платежи
+            </button>
+            <button class="tab-btn" onclick="stab('s',this)" style="justify-content:flex-start;">
+                ⚙ Настройки
+            </button>
         </aside>
 
-        <!-- Content -->
-        <section style="flex:1;min-width:300px;">
-            <!-- Tickets -->
-            <div class="tab-content" id="tab-tickets">
-                <h2 style="font-size:2rem;margin:0 0 1.25rem;">АКТИВНЫЕ БИЛЕТЫ</h2>
-                <div class="flex flex-col gap-5">
-                    {% for booking in bookings %}
-                        {% if booking.ticket and booking.status == 'paid' %}
+        <section>
+            <!-- Active Tickets -->
+            <div class="pTab" id="tab-t">
+                <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--text);margin:0 0 1.25rem;">АКТИВНЫЕ БИЛЕТЫ</h2>
+                <div style="display:flex;flex-direction:column;gap:1.25rem;">
+                    {% for b in bookings %}
+                        {% if b.ticket and b.status == 'paid' %}
                         <article class="ticket-stub">
                             <div class="ticket-info">
                                 <span class="badge badge-green">Активен</span>
-                                <h3 style="font-size:1.75rem;margin:1rem 0 0;">{{ booking.session.movie.title }}</h3>
-                                <p class="text-muted" style="margin:0.25rem 0 0;">
-                                    {{ booking.session.date|date:"d EEEE" }}, {{ booking.session.time|time:"H:i" }} · Зал {{ booking.session.hall.number }}
-                                </p>
-                                <div class="flex gap-6 mt-5 text-sm">
-                                    <span><b class="block text-muted">Ряд</b>{{ booking.seat.row }}</span>
-                                    <span><b class="block text-muted">Место</b>{{ booking.seat.number }}</span>
-                                    <span><b class="block text-muted">Сумма</b>{{ booking.ticket.price }} ₽</span>
+                                <h3 style="font-family:'Bebas Neue',sans-serif;font-size:1.75rem;color:var(--text);margin:1rem 0 0;">{{ b.session.movie.title }}</h3>
+                                <p style="margin:.25rem 0 0;color:var(--text-muted);">Сегодня, {{ b.session.time|time:"H:i" }} · Зал {{ b.session.hall.number }}</p>
+                                <div style="display:flex;gap:1.5rem;margin-top:1.25rem;font-size:.875rem;">
+                                    <span><b style="display:block;color:var(--text-muted);">Ряд</b>{{ b.seat.row }}</span>
+                                    <span><b style="display:block;color:var(--text-muted);">Места</b>{{ b.seat.number }}</span>
+                                    <span><b style="display:block;color:var(--text-muted);">Сумма</b>{{ b.ticket.price }} ₽</span>
                                 </div>
                             </div>
                             <div class="ticket-code">
-                                <span class="text-primary" style="font-size:1.25rem;">🎫</span>
+                                <span style="color:var(--primary);font-size:1.125rem;">🎫</span>
                                 <div class="barcode" aria-label="Штрихкод билета"></div>
-                                <span class="text-xs text-muted">{{ booking.ticket.barcode }}</span>
+                                <span style="font-size:.75rem;color:var(--text-muted);">{{ b.ticket.barcode }}</span>
                             </div>
                         </article>
                         {% endif %}
                     {% empty %}
-                        <div class="empty-state panel">
-                            <p>Активных билетов нет</p>
-                        </div>
+                    <div class="empty-state panel"><p>Активных билетов нет</p></div>
                     {% endfor %}
                 </div>
             </div>
 
             <!-- History -->
-            <div class="tab-content" id="tab-history" style="display:none;">
-                <h2 style="font-size:2rem;margin:0 0 1.25rem;">ИСТОРИЯ ПОСЕЩЕНИЙ</h2>
-                <div class="flex flex-col gap-5">
-                    {% for booking in bookings %}
-                        {% if booking.status in 'used,cancelled,expired' %}
+            <div class="pTab" id="tab-h" style="display:none;">
+                <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--text);margin:0 0 1.25rem;">ИСТОРИЯ ПОСЕЩЕНИЙ</h2>
+                <div style="display:flex;flex-direction:column;gap:1.25rem;">
+                    {% for b in bookings %}
+                        {% if b.status in 'used,cancelled,expired' %}
                         <article class="ticket-stub past">
                             <div class="ticket-info">
-                                <span class="badge">{{ booking.get_status_display }}</span>
-                                <h3 style="font-size:1.75rem;margin:1rem 0 0;">{{ booking.session.movie.title }}</h3>
-                                <p class="text-muted" style="margin:0.25rem 0 0;">
-                                    {{ booking.session.date|date:"d EEEE" }}, {{ booking.session.time|time:"H:i" }} · Зал {{ booking.session.hall.number }}
-                                </p>
-                                <div class="flex gap-6 mt-5 text-sm">
-                                    <span><b class="block text-muted">Ряд</b>{{ booking.seat.row }}</span>
-                                    <span><b class="block text-muted">Место</b>{{ booking.seat.number }}</span>
-                                    <span><b class="block text-muted">Дата</b>{{ booking.created_at|date:"d.m.Y" }}</span>
+                                <span class="badge">{{ b.get_status_display }}</span>
+                                <h3 style="font-family:'Bebas Neue',sans-serif;font-size:1.75rem;color:var(--text);margin:1rem 0 0;">{{ b.session.movie.title }}</h3>
+                                <p style="margin:.25rem 0 0;color:var(--text-muted);">{{ b.session.date|date:"d.m.Y" }}, {{ b.session.time|time:"H:i" }} · Зал {{ b.session.hall.number }}</p>
+                                <div style="display:flex;gap:1.5rem;margin-top:1.25rem;font-size:.875rem;">
+                                    <span><b style="display:block;color:var(--text-muted);">Ряд</b>{{ b.seat.row }}</span>
+                                    <span><b style="display:block;color:var(--text-muted);">Место</b>{{ b.seat.number }}</span>
                                 </div>
                             </div>
-                            <div class="ticket-code">
-                                <div class="barcode" style="opacity:0.3;"></div>
-                            </div>
+                            <div class="ticket-code"><div class="barcode" style="opacity:.3;"></div></div>
                         </article>
                         {% endif %}
                     {% empty %}
-                        <div class="empty-state panel">
-                            <p>История пока пуста</p>
-                        </div>
+                    <div class="empty-state panel"><p>История пока пуста</p></div>
                     {% endfor %}
                 </div>
             </div>
 
             <!-- Payments -->
-            <div class="tab-content" id="tab-payments" style="display:none;">
-                <h2 style="font-size:2rem;margin:0 0 1.25rem;">ПЛАТЕЖИ</h2>
-                <div class="panel overflow-x-auto">
+            <div class="pTab" id="tab-p" style="display:none;">
+                <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--text);margin:0 0 1.25rem;">ПЛАТЕЖИ</h2>
+                <div class="panel" style="overflow:hidden;">
                     <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Дата</th>
-                                <th>Заказ</th>
-                                <th>Способ</th>
-                                <th style="text-align:right;">Сумма</th>
-                            </tr>
-                        </thead>
+                        <thead><tr><th>Дата</th><th>Заказ</th><th>Способ</th><th style="text-align:right;">Сумма</th></tr></thead>
                         <tbody>
-                            {% for payment in payments %}
+                            {% for p in payments %}
                             <tr>
-                                <td>{{ payment.created_at|date:"d.m.Y" }}</td>
-                                <td>{{ payment.ticket.barcode|truncatechars:20 }}</td>
-                                <td>{{ payment.get_method_display }}</td>
-                                <td style="text-align:right;">{{ payment.amount }} ₽</td>
+                                <td>{{ p.created_at|date:"d.m.Y" }}</td>
+                                <td>{{ p.ticket.barcode|truncatechars:20 }}</td>
+                                <td>{{ p.get_method_display }}</td>
+                                <td style="text-align:right;">{{ p.amount }} ₽</td>
                             </tr>
                             {% empty %}
-                            <tr><td colspan="4" class="text-center text-muted">Платежей нет</td></tr>
+                            <tr><td colspan="4" style="text-align:center;color:var(--text-muted);">Платежей нет</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -120,35 +105,31 @@
             </div>
 
             <!-- Settings -->
-            <div class="tab-content" id="tab-settings" style="display:none;">
-                <h2 style="font-size:2rem;margin:0 0 1.25rem;">НАСТРОЙКИ</h2>
-                <form class="panel p-5 grid gap-4" style="max-width:600px;">
-                    <label class="text-sm">Имя
-                        <input type="text" class="form-control mt-2" value="{{ user.first_name }}" disabled>
-                    </label>
-                    <label class="text-sm">Фамилия
-                        <input type="text" class="form-control mt-2" value="{{ user.last_name }}" disabled>
-                    </label>
-                    <label class="text-sm">Email
-                        <input type="email" class="form-control mt-2" value="{{ user.email }}" disabled>
-                    </label>
-                    <label class="text-sm">Роль
-                        <input type="text" class="form-control mt-2" value="{{ user.get_role_display }}" disabled>
-                    </label>
-                    <button type="button" class="btn btn-primary rounded-full" style="width:fit-content;">Сохранить изменения</button>
+            <div class="pTab" id="tab-s" style="display:none;">
+                <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--text);margin:0 0 1.25rem;">НАСТРОЙКИ</h2>
+                <form class="panel" style="display:grid;gap:1rem;max-width:32rem;padding:1.25rem;grid-template-columns:1fr 1fr;">
+                    <label style="font-size:.875rem;">Имя<input type="text" class="form-control mt-2" value="{{ user.first_name }}" disabled></label>
+                    <label style="font-size:.875rem;">Фамилия<input type="text" class="form-control mt-2" value="{{ user.last_name }}" disabled></label>
+                    <label style="font-size:.875rem;grid-column:1/-1;">Email<input type="email" class="form-control mt-2" value="{{ user.email }}" disabled></label>
+                    <label style="font-size:.875rem;grid-column:1/-1;">Роль<input type="text" class="form-control mt-2" value="{{ user.get_role_display }}" disabled></label>
+                    <button type="button" class="btn btn-primary" style="grid-column:1/-1;width:fit-content;border-radius:999px;">Сохранить изменения</button>
                 </form>
             </div>
         </section>
     </div>
 </main>
+
+<style>
+@media(max-width:768px){.profile-grid{grid-template-columns:1fr!important}#pTabs{flex-direction:row!important}}
+</style>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-function showTab(id, btn) {
-    document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById('tab-' + id).style.display = 'block';
+function stab(id,btn){
+    document.querySelectorAll('.pTab').forEach(function(e){e.style.display='none'});
+    document.querySelectorAll('#pTabs .tab-btn').forEach(function(b){b.classList.remove('active')});
+    document.getElementById('tab-'+id).style.display='block';
     btn.classList.add('active');
 }
 </script>

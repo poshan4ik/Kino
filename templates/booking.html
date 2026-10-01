@@ -1,43 +1,39 @@
 {% extends 'base.html' %}
 {% load static %}
-
 {% block title %}Выбор мест — Аврора{% endblock %}
 
 {% block content %}
-<main class="page-shell py-10">
-    <!-- Title -->
-    <div class="mb-8">
-        <div class="section-rule mb-5"></div>
-        <p class="eyebrow">{{ session.movie.title }}</p>
-        <h1 style="font-size:clamp(2.5rem,5vw,3.5rem);margin:0;">ВЫБОР МЕСТ</h1>
-        <p class="text-muted mt-2">
-            {{ session.date|date:"d EEEEE" }}, {{ session.time|time:"H:i" }} · Зал {{ session.hall.number }} · {{ session.hall.get_type_display }}
-        </p>
-    </div>
+<main class="page-shell" style="padding:2.5rem 0 3.5rem;">
+    <div class="section-rule" style="margin-bottom:1.25rem;"></div>
+    <p class="eyebrow">{{ session.movie.title }}</p>
+    <h1 style="font-family:'Bebas Neue',sans-serif;font-size:clamp(2.5rem,5vw,3.5rem);line-height:1;color:var(--text);margin:0;">ВЫБОР МЕСТ</h1>
+    <p style="margin:.5rem 0 0;font-size:.875rem;color:var(--text-muted);">
+        Сегодня, {{ session.time|time:"H:i" }} · Зал {{ session.hall.number }} · {{ session.hall.get_type_display }}
+    </p>
 
-    <div class="flex gap-8 flex-wrap" style="align-items:flex-start;">
-        <!-- Hall Schema -->
-        <section class="panel p-5" style="flex:1;min-width:0;overflow-x:auto;">
-            <div style="min-width:500px;max-width:720px;margin:0 auto;">
+    <div style="display:grid;gap:2rem;grid-template-columns:1fr 340px;align-items:start;" class="booking-grid">
+        <!-- Hall -->
+        <section class="panel" style="overflow-x:auto;padding:1.25rem;">
+            <div style="min-width:540px;max-width:768px;margin:0 auto;">
                 <!-- Screen -->
                 <div class="screen-indicator">
                     <span>ЭКРАН</span>
                 </div>
 
                 <!-- Seats -->
-                <div class="flex flex-col gap-3">
+                <div style="display:flex;flex-direction:column;gap:.75rem;">
                     {% for row_num, seats in seats_by_row.items %}
-                    <div class="flex items-center justify-center gap-2">
-                        <span style="width:20px;text-align:right;font-size:0.75rem;color:var(--text-muted);">{{ row_num }}</span>
+                    <div style="display:flex;align-items:center;justify-content:center;gap:.5rem;">
+                        <span style="width:20px;text-align:right;font-size:.75rem;color:var(--text-muted);">{{ row_num }}</span>
                         {% for seat in seats %}
                         <button type="button"
                                 class="seat {% if seat.is_booked %}seat-taken{% elif seat.category == 'vip' %}seat-vip{% endif %}"
-                                data-seat-id="{{ seat.id }}"
+                                data-id="{{ seat.id }}"
                                 data-price="{{ seat.price }}"
                                 data-row="{{ row_num }}"
-                                data-number="{{ seat.number }}"
+                                data-num="{{ seat.number }}"
                                 {% if seat.is_booked %}disabled{% endif %}
-                                aria-label="Ряд {{ row_num }}, место {{ seat.number }}, {{ seat.get_category_display }}">
+                                aria-label="Ряд {{ row_num }}, место {{ seat.number }}">
                             {{ seat.number }}
                         </button>
                         {% endfor %}
@@ -47,94 +43,91 @@
 
                 <!-- Legend -->
                 <div class="seat-legend">
-                    <span class="seat-legend-item"><span class="seat-legend-icon"></span> Свободно</span>
-                    <span class="seat-legend-item" style="color:var(--primary);"><span class="seat-legend-icon" style="background:var(--primary);border-color:var(--primary);"></span> Выбрано</span>
-                    <span class="seat-legend-item" style="opacity:0.5;"><span class="seat-legend-icon" style="opacity:0.5;"></span> Занято</span>
-                    <span class="seat-legend-item" style="color:var(--gold);"><span class="seat-legend-icon" style="border-color:var(--gold);"></span> VIP</span>
+                    <span class="seat-legend-item">
+                        <span class="seat-legend-icon"></span>Свободно
+                    </span>
+                    <span class="seat-legend-item" style="color:var(--primary);">
+                        <span class="seat-legend-icon" style="background:var(--primary);border-color:var(--primary);"></span>Выбрано
+                    </span>
+                    <span class="seat-legend-item" style="opacity:.4;">
+                        <span class="seat-legend-icon" style="opacity:.5;"></span>Занято
+                    </span>
+                    <span class="seat-legend-item" style="color:var(--gold);">
+                        <span class="seat-legend-icon" style="border-color:rgba(238,184,74,.7);"></span>VIP
+                    </span>
                 </div>
             </div>
         </section>
 
         <!-- Order Panel -->
-        <aside class="panel p-5" style="width:340px;min-width:300px;position:sticky;top:76px;">
+        <aside class="panel" style="padding:1.25rem;position:sticky;top:76px;" class="order-panel">
             <p class="eyebrow">Ваш заказ</p>
-            <h2 style="font-size:1.75rem;margin:0;">{{ session.movie.title }}</h2>
-            <div class="border-b mt-4 pb-4 text-sm text-muted">
-                <p style="margin:0;">{{ session.date|date:"d EEEE" }}, {{ session.time|time:"H:i" }}</p>
+            <h2 style="font-family:'Bebas Neue',sans-serif;font-size:1.75rem;color:var(--text);margin:0;">{{ session.movie.title }}</h2>
+
+            <div style="border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:1rem 0;margin-top:1.25rem;font-size:.875rem;color:var(--text-muted);">
+                <p style="margin:0;">Сегодня, {{ session.time|time:"H:i" }}</p>
                 <p style="margin:0;">Зал {{ session.hall.number }} · {{ session.hall.get_type_display }}</p>
             </div>
 
-            <!-- Selected seats list -->
-            <div id="selectedList" style="min-height:96px;padding:1.25rem 0;">
-                <p class="text-sm text-muted">Выберите места на схеме</p>
+            <div id="selList" style="min-height:6rem;padding:1.25rem 0;">
+                <p style="font-size:.875rem;color:var(--text-muted);margin:0;">Выберите места на схеме</p>
             </div>
 
-            <div class="flex justify-between border-t pt-5">
+            <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:1.25rem;">
                 <b>Итого</b>
-                <b class="text-xl" id="totalPrice">0 ₽</b>
+                <b style="font-size:1.25rem;" id="total">0 ₽</b>
             </div>
 
-            <form method="post" action="{% url 'booking' session.id %}" id="bookingForm" class="mt-5">
+            <form method="post" action="{% url 'booking' session.id %}" id="bkForm" style="margin-top:1.25rem;">
                 {% csrf_token %}
-                <input type="hidden" name="seats" id="seatsInput" value="">
-                <button type="submit" class="btn btn-primary w-full h-12" disabled id="payBtn">Оплатить</button>
+                <input type="hidden" name="seats" id="seatsInp" value="">
+                <button type="submit" class="btn btn-primary w-full" style="height:3rem;" disabled id="payBtn">Оплатить</button>
             </form>
-            <p class="text-center text-xs text-muted mt-3">Бронь удерживается 15 минут</p>
+            <p style="text-align:center;font-size:.75rem;color:var(--text-muted);margin:.75rem 0 0;">Бронь удерживается 15 минут</p>
         </aside>
     </div>
 </main>
+
+<style>
+@media(max-width:1100px){.booking-grid{grid-template-columns:1fr!important}.order-panel{position:static!important}}
+</style>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-(function() {
-    const seats = document.querySelectorAll('.seat:not(:disabled)');
-    const selected = new Set();
-    const maxSeats = 8;
-    const listEl = document.getElementById('selectedList');
-    const totalEl = document.getElementById('totalPrice');
-    const payBtn = document.getElementById('payBtn');
-    const seatsInput = document.getElementById('seatsInput');
+(function(){
+    var seats=document.querySelectorAll('.seat:not(:disabled)');
+    var sel=new Set();
+    var list=document.getElementById('selList');
+    var total=document.getElementById('total');
+    var pay=document.getElementById('payBtn');
+    var inp=document.getElementById('seatsInp');
+    var max=8;
 
-    seats.forEach(seat => {
-        seat.addEventListener('click', function() {
-            const id = this.dataset.seatId;
-            if (this.classList.contains('seat-selected')) {
-                this.classList.remove('seat-selected');
-                selected.delete(id);
-            } else {
-                if (selected.size >= maxSeats) {
-                    alert('Максимум ' + maxSeats + ' мест');
-                    return;
-                }
-                this.classList.add('seat-selected');
-                selected.add(id);
+    seats.forEach(function(s){
+        s.addEventListener('click',function(){
+            var id=this.dataset.id;
+            if(this.classList.contains('seat-selected')){this.classList.remove('seat-selected');sel.delete(id);}
+            else{
+                if(sel.size>=max){alert('Максимум '+max+' мест');return;}
+                this.classList.add('seat-selected');sel.add(id);
             }
-            update();
+            upd();
         });
     });
 
-    function update() {
-        let total = 0;
-        let html = '';
-        selected.forEach(id => {
-            const el = document.querySelector('.seat[data-seat-id="' + id + '"]');
-            const row = el.dataset.row;
-            const num = el.dataset.number;
-            const price = parseFloat(el.dataset.price);
-            total += price;
-            html += '<div class="flex justify-between text-sm" style="padding:0.5rem 0;"><span>Ряд ' + row + ', место ' + num + '</span><span>' + price + ' ₽</span></div>';
+    function upd(){
+        var t=0,h='';
+        sel.forEach(function(id){
+            var el=document.querySelector('.seat[data-id="'+id+'"]');
+            var r=el.dataset.row,n=el.dataset.num,p=parseFloat(el.dataset.price);
+            t+=p;
+            h+='<div style="display:flex;justify-content:space-between;font-size:.875rem;padding:.5rem 0;"><span>Ряд '+r+', место '+n+'</span><span>'+p+' ₽</span></div>';
         });
-
-        if (selected.size === 0) {
-            listEl.innerHTML = '<p class="text-sm text-muted">Выберите места на схеме</p>';
-        } else {
-            listEl.innerHTML = html;
-        }
-
-        totalEl.textContent = total.toLocaleString('ru-RU') + ' ₽';
-        payBtn.disabled = selected.size === 0;
-        seatsInput.value = Array.from(selected).join(',');
+        list.innerHTML=sel.size?h:'<p style="font-size:.875rem;color:var(--text-muted);margin:0;">Выберите места на схеме</p>';
+        total.textContent=t.toLocaleString('ru-RU')+' ₽';
+        pay.disabled=!sel.size;
+        inp.value=Array.from(sel).join(',');
     }
 })();
 </script>

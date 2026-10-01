@@ -1,86 +1,66 @@
 {% extends 'base.html' %}
 {% load static %}
-
 {% block title %}Регистрация — Аврора{% endblock %}
 
 {% block content %}
-<main class="auth-shell flex items-center justify-center px-4 py-16">
-    <section style="width:100%;max-width:420px;">
-        <div class="mb-8">
-            <div class="section-rule mb-5"></div>
-            <p class="eyebrow">Добро пожаловать</p>
-            <h1 style="font-size:clamp(2.5rem,5vw,3.5rem);margin:0;">РЕГИСТРАЦИЯ</h1>
-            <p class="text-muted mt-2">Создайте аккаунт — билеты всегда будут под рукой.</p>
-        </div>
+<main class="auth-shell" style="min-height:calc(100vh - 56px);display:flex;align-items:center;justify-content:center;padding:3rem 1rem;">
+    <div class="panel" style="width:100%;max-width:32rem;padding:2.5rem;">
+        <p class="eyebrow">Новый зритель</p>
+        <h1 style="font-family:'Bebas Neue',sans-serif;font-size:2.5rem;line-height:1;color:var(--text);margin:0;">РЕГИСТРАЦИЯ</h1>
 
-        <form method="post" class="panel p-6" style="display:flex;flex-direction:column;gap:1rem;" novalidate>
+        <form method="post" action="{% url 'register' %}" style="display:grid;gap:1.25rem;margin-top:2rem;">
             {% csrf_token %}
-
             {% if form.non_field_errors %}
-                <div class="alert alert-danger">
-                    {% for error in form.non_field_errors %}{{ error }}{% endfor %}
-                </div>
+            <div class="alert alert-error">{{ form.non_field_errors }}</div>
             {% endif %}
 
-            <label class="text-sm">Имя
-                <div class="relative mt-2">
-                    <span class="input-group-icon">👤</span>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+                <label class="field">
+                    <span class="field-label">Имя</span>
                     {{ form.first_name }}
-                </div>
-                {% if form.first_name.errors %}<span class="text-destructive text-xs">{{ form.first_name.errors.0 }}</span>{% endif %}
-            </label>
-
-            <label class="text-sm">Фамилия
-                <div class="relative mt-2">
-                    <span class="input-group-icon">👤</span>
+                </label>
+                <label class="field">
+                    <span class="field-label">Фамилия</span>
                     {{ form.last_name }}
-                </div>
-                {% if form.last_name.errors %}<span class="text-destructive text-xs">{{ form.last_name.errors.0 }}</span>{% endif %}
+                </label>
+            </div>
+
+            <label class="field">
+                <span class="field-label">Email</span>
+                {{ form.email }}
             </label>
 
-            <label class="text-sm">Email
-                <div class="relative mt-2">
-                    <span class="input-group-icon">✉</span>
-                    {{ form.email }}
-                </div>
-                {% if form.email.errors %}<span class="text-destructive text-xs">{{ form.email.errors.0 }}</span>{% endif %}
+            <label class="field">
+                <span class="field-label">Телефон</span>
+                {{ form.phone }}
             </label>
 
-            <label class="text-sm">Пароль
-                <div class="relative mt-2">
-                    <span class="input-group-icon">🔒</span>
-                    {{ form.password1 }}
-                </div>
-                {% if form.password1.errors %}<span class="text-destructive text-xs">{{ form.password1.errors.0 }}</span>{% endif %}
+            <label class="field">
+                <span class="field-label">Логин</span>
+                {{ form.username }}
             </label>
 
-            <label class="text-sm">Повторите пароль
-                <div class="relative mt-2">
-                    <span class="input-group-icon">🔒</span>
-                    {{ form.password2 }}
-                </div>
-                {% if form.password2.errors %}<span class="text-destructive text-xs">{{ form.password2.errors.0 }}</span>{% endif %}
+            <label class="field">
+                <span class="field-label">Пароль</span>
+                {{ form.password1 }}
             </label>
 
-            <label class="flex items-start gap-3 text-xs text-muted" style="align-items:flex-start;">
-                <input type="checkbox" name="terms" required style="margin-top:2px;accent-color:var(--primary);">
-                Я принимаю правила сервиса и согласен на обработку данных
+            <label class="field">
+                <span class="field-label">Повторите пароль</span>
+                {{ form.password2 }}
             </label>
 
-            <button type="submit" class="btn btn-primary w-full h-12 rounded-full">Создать аккаунт</button>
+            <label style="display:flex;align-items:flex-start;gap:.5rem;font-size:.8125rem;color:var(--text-muted);">
+                {{ form.terms }}
+                <span>Соглашаюсь с условиями использования и обработкой персональных данных</span>
+            </label>
 
-            <p class="text-center text-sm text-muted" style="margin:0;">
-                Уже есть аккаунт? <a href="{% url 'login' %}">Войти</a>
-            </p>
+            <button type="submit" class="btn btn-primary" style="height:3rem;border-radius:999px;">Создать аккаунт</button>
         </form>
-    </section>
-</main>
-{% endblock %}
 
-{% block extra_css %}
-<style>
-    .auth-shell { min-height: calc(100vh - 56px); }
-    .auth-shell .form-control { border: none; background: transparent; padding: 0 1rem 0 2.5rem; height: auto; padding-block: 0; color: var(--text); }
-    .auth-shell label { display: block; }
-</style>
+        <p style="text-align:center;font-size:.875rem;color:var(--text-muted);margin-top:1.5rem;">
+            Уже есть аккаунт? <a href="{% url 'login' %}" style="color:var(--primary);">Войти</a>
+        </p>
+    </div>
+</main>
 {% endblock %}

@@ -3,7 +3,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}Аврора — кинотеатр{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,99 +12,103 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <!-- Header -->
-    <header class="site-header">
-        <div class="page-shell">
-            <a href="{% url 'home' %}" style="display:flex;align-items:center;gap:0.5rem;text-decoration:none;" aria-label="Аврора — на главную">
-                <span class="brand-mark"><span></span></span>
-                <span class="brand-text">АВРОРА</span>
-            </a>
 
-            <nav class="flex items-center gap-1" style="display:none;" id="mainNav">
-                <a href="{% url 'home' %}" class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}">Афиша</a>
-                <a href="{% url 'profile' %}" class="nav-link {% if request.resolver_match.url_name == 'profile' %}active{% endif %}">Кабинет</a>
-                <a href="{% url 'cashier' %}" class="nav-link {% if request.resolver_match.url_name == 'cashier' %}active{% endif %}">Касса</a>
-                <a href="{% url 'controller' %}" class="nav-link {% if request.resolver_match.url_name == 'controller' %}active{% endif %}">Контроль</a>
-                <a href="{% url 'manager' %}" class="nav-link {% if request.resolver_match.url_name == 'manager' %}active{% endif %}">Управление</a>
-            </nav>
+<!-- NAVBAR -->
+<header class="site-header">
+    <div class="page-shell" style="display:flex;height:56px;align-items:center;justify-content:space-between;gap:1rem;">
+        <a href="{% url 'home' %}" style="display:flex;align-items:center;gap:.5rem;text-decoration:none;" aria-label="Аврора — на главную">
+            <span class="brand-mark"><span></span></span>
+            <span class="brand-text">АВРОРА</span>
+        </a>
 
-            <div class="flex items-center gap-2">
-                {% if user.is_authenticated %}
-                    <a href="{% url 'profile' %}" class="btn btn-primary btn-sm">
-                        {{ user.first_name|default:user.username }}
-                    </a>
-                {% else %}
-                    <a href="{% url 'login' %}" class="btn btn-primary btn-sm">Войти</a>
-                {% endif %}
-                <button class="btn btn-ghost btn-icon lg-only" id="burgerBtn" aria-label="Меню" onclick="toggleMobileNav()">☰</button>
-            </div>
-        </div>
-
-        <!-- Mobile nav -->
-        <nav class="mobile-nav page-shell lg-only" id="mobileNav">
-            <a href="{% url 'home' %}" class="mobile-nav-link">Афиша</a>
-            <a href="{% url 'profile' %}" class="mobile-nav-link">Кабинет</a>
-            <a href="{% url 'cashier' %}" class="mobile-nav-link">Касса</a>
-            <a href="{% url 'controller' %}" class="mobile-nav-link">Контроль</a>
-            <a href="{% url 'manager' %}" class="mobile-nav-link">Управление</a>
-            {% if user.is_authenticated %}
-                <form method="post" action="{% url 'logout' %}">
-                    {% csrf_token %}
-                    <button type="submit" class="mobile-nav-link" style="background:none;border:none;width:100%;text-align:left;cursor:pointer;">Выйти</button>
-                </form>
-            {% else %}
-                <a href="{% url 'login' %}" class="mobile-nav-link">Войти</a>
-            {% endif %}
+        <nav class="nav-desktop" id="navDesktop" style="display:none;align-items:center;gap:.25rem;">
+            <a href="{% url 'home' %}" class="nav-link {% if request.resolver_match.url_name == 'home' %}nav-link-active{% endif %}">Афиша</a>
+            <a href="{% url 'profile' %}" class="nav-link {% if request.resolver_match.url_name == 'profile' %}nav-link-active{% endif %}">Мои билеты</a>
+            <a href="{% url 'cashier' %}" class="nav-link {% if request.resolver_match.url_name == 'cashier' %}nav-link-active{% endif %}">Касса</a>
+            <a href="{% url 'controller' %}" class="nav-link {% if request.resolver_match.url_name == 'controller' %}nav-link-active{% endif %}">Контроль</a>
+            <a href="{% url 'manager' %}" class="nav-link {% if request.resolver_match.url_name == 'manager' %}nav-link-active{% endif %}">Управление</a>
         </nav>
-    </header>
 
-    <!-- Messages -->
-    {% if messages %}
-        <div class="page-shell" style="padding-top:1rem;">
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-            {% endfor %}
+        <div class="nav-actions" style="display:none;align-items:center;gap:.5rem;" id="navActions">
+            {% if user.is_authenticated %}
+                <a href="{% url 'profile' %}" class="btn btn-primary" style="padding:.5rem 1rem;font-size:.8125rem;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    {{ user.first_name|default:user.username }}
+                </a>
+            {% else %}
+                <a href="{% url 'login' %}" class="btn btn-primary" style="padding:.5rem 1rem;font-size:.8125rem;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    Войти
+                </a>
+            {% endif %}
         </div>
-    {% endif %}
 
-    <!-- Main -->
-    <main class="min-h-screen">
-        {% block content %}{% endblock %}
-    </main>
+        <button class="btn-burger" id="burgerBtn" aria-label="Открыть меню" onclick="toggleMobile()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+    </div>
 
-    <!-- Footer -->
-    <footer class="site-footer">
-        <div class="page-shell">
-            <div>
-                <span class="brand-text" style="font-size:1.25rem;">АВРОРА</span>
-                <p style="margin:0.25rem 0 0 0;">Кино начинается здесь.</p>
-            </div>
-            <div class="flex gap-6">
-                <span>Екатеринбург, ул. Ленина, 46</span>
-                <span>+7 343 000-00-00</span>
-            </div>
-            <span>© 2026 Аврора</span>
+    <!-- Mobile nav -->
+    <nav class="mobile-nav page-shell" id="mobileNav" style="display:none;">
+        <a href="{% url 'home' %}" class="mobile-nav-link" onclick="toggleMobile()">Афиша</a>
+        <a href="{% url 'profile' %}" class="mobile-nav-link" onclick="toggleMobile()">Мои билеты</a>
+        <a href="{% url 'cashier' %}" class="mobile-nav-link" onclick="toggleMobile()">Касса</a>
+        <a href="{% url 'controller' %}" class="mobile-nav-link" onclick="toggleMobile()">Контроль</a>
+        <a href="{% url 'manager' %}" class="mobile-nav-link" onclick="toggleMobile()">Управление</a>
+        {% if user.is_authenticated %}
+            <form method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="mobile-nav-link" style="background:none;border:none;width:100%;text-align:left;cursor:pointer;">Выйти</button>
+            </form>
+        {% else %}
+            <a href="{% url 'login' %}" class="mobile-nav-link" onclick="toggleMobile()">Войти</a>
+        {% endif %}
+    </nav>
+</header>
+
+<!-- MESSAGES -->
+{% if messages %}
+<div class="page-shell" style="padding-top:1rem;">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- CONTENT -->
+{% block content %}{% endblock %}
+
+<!-- FOOTER -->
+<footer class="site-footer">
+    <div class="page-shell" style="display:flex;flex-direction:column;gap:1.25rem;font-size:.875rem;color:var(--text-muted);">
+        <div>
+            <span class="brand-text" style="font-size:1.25rem;">АВРОРА</span>
+            <p style="margin:.25rem 0 0;">Кино начинается здесь.</p>
         </div>
-    </footer>
+        <div style="display:flex;gap:1.5rem;">
+            <span>Екатеринбург, ул. Ленина, 46</span>
+            <span>+7 343 000-00-00</span>
+        </div>
+        <span>© 2026 Аврора</span>
+    </div>
+</footer>
 
-    <script>
-    function toggleMobileNav() {
-        document.getElementById('mobileNav').classList.toggle('open');
-    }
-    // Show desktop nav
-    function checkNav() {
-        const nav = document.getElementById('mainNav');
-        if (window.innerWidth >= 1025) {
-            nav.style.display = 'flex';
-            document.getElementById('mobileNav').classList.remove('open');
-        } else {
-            nav.style.display = 'none';
-        }
-    }
-    checkNav();
-    window.addEventListener('resize', checkNav);
-    </script>
+<script>
+function toggleMobile() {
+    var nav = document.getElementById('mobileNav');
+    nav.style.display = nav.style.display === 'grid' ? 'none' : 'grid';
+}
+function checkLayout() {
+    var w = window.innerWidth;
+    document.getElementById('navDesktop').style.display = w >= 1024 ? 'flex' : 'none';
+    document.getElementById('navActions').style.display = w >= 640 ? 'flex' : 'none';
+    document.getElementById('burgerBtn').style.display = w >= 1024 ? 'none' : 'flex';
+    if (w >= 1024) document.getElementById('mobileNav').style.display = 'none';
+}
+checkLayout();
+window.addEventListener('resize', checkLayout);
+</script>
 
-    {% block extra_js %}{% endblock %}
+{% block extra_js %}{% endblock %}
 </body>
 </html>

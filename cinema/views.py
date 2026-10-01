@@ -780,38 +780,83 @@ class ManagerView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         from django.utils import timezone
-        from django.db.models import Sum
+        from django.db.models import Sum, Count, Q
+        from datetime import timedelta
         
         today = date.today()
+        context['today'] = today
         context['now'] = timezone.now()
         context['movies'] = Movie.objects.select_related('genre').order_by('-created_at')[:20]
         context['halls'] = Hall.objects.order_by('number')
-        context['sessions'] = Session.objects.select_related('movie', 'hall').filter(
-            date__gte=today
-        ).order_by('date', 'time')[:20]
+        
+        sessions = Session.objects.select_related('movie', 'hall').filter(
+            date=today, is_active=True
+        ).order_by('time').annotate(
+            sold_count=Count('bookings', filter=Q(bookings__status__in=['paid', 'used'])),
+            revenue_sum=Sum('bookings__ticket__price', filter=Q(bookings__status__in=['paid', 'used'])),
+        )
+        session_rows = []
+        for s in sessions:
+            total = s.hall.seats.count()
+            session_rows.append({
+                'time': s.time,
+                'movie': s.movie,
+                'hall': s.hall,
+                'sold': s.sold_count or 0,
+                'total': total,
+                'revenue': int(float(s.revenue_sum or 0)),
+            })
+        context['sessions'] = session_rows
         
         revenue = Payment.objects.filter(
             status='completed',
             completed_at__date=today
         ).aggregate(total=Sum('amount'))['total'] or 0
-        context['revenue'] = int(float(revenue))
-        
-        context['tickets_sold'] = Ticket.objects.filter(
+        tickets_sold = Ticket.objects.filter(
             status__in=['active', 'used'],
             issued_at__date=today
         ).count()
+        total_seats = sum(r['total'] for r in session_rows)
+        sold_seats = sum(r['sold'] for r in session_rows)
+        context['stats'] = {
+            'revenue': int(float(revenue)),
+            'tickets': tickets_sold,
+            'occupancy': round(sold_seats / total_seats * 100) if total_seats else 0,
+            'sessions': len(session_rows),
+        }
+        context['revenue'] = int(float(revenue))
+        context['tickets_sold'] = tickets_sold
+        context['occupancy'] = context['stats']['occupancy']
         
-        context['occupancy'] = 67
+        chart = []
+        for i in range(6, -1, -1):
+            d = today - timedelta(days=i)
+            day_rev = Payment.objects.filter(
+                status='completed',
+                completed_at__date=d
+            ).aggregate(total=Sum('amount'))['total'] or 0
+            chart.append({
+                'day': d.strftime('%d.%m'),
+                'revenue': int(float(day_rev)),
+            })
+        max_rev = max(c['revenue'] for c in chart) or 1
+        for c in chart:
+            c['percent'] = max(6, round(c['revenue'] / max_rev * 100))
+        context['chart'] = chart
         
-        context['top_movies'] = [
-            {'title': m['title'], 'percent': m['percent']}
-            for m in [
-                {'title': 'Дюна', 'percent': 92},
-                {'title': 'Фуриоса', 'percent': 76},
-                {'title': 'Каскадёры', 'percent': 61},
-                {'title': 'Претенденты', 'percent': 44},
-            ]
+        top = Ticket.objects.filter(
+            status__in=['active', 'used'],
+            issued_at__date__gte=today - timedelta(days=7)
+        ).values(
+            'booking__session__movie__title'
+        ).annotate(tickets=Count('id')).order_by('-tickets')[:5]
+        max_top = top[0]['tickets'] if top else 1
+        context['top_films'] = [
+            {'title': t['booking__session__movie__title'], 'tickets': t['tickets'],
+             'percent': round(t['tickets'] / max_top * 100)}
+            for t in top
         ]
+        context['top_movies'] = context['top_films']
         
         return context
 

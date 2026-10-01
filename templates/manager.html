@@ -1,207 +1,97 @@
 {% extends 'base.html' %}
 {% load static %}
-
-{% block title %}Панель менеджера — Аврора{% endblock %}
+{% block title %}Управление — Аврора{% endblock %}
 
 {% block content %}
-<main class="page-shell py-10">
-    <!-- Title -->
-    <div class="mb-8">
-        <div class="section-rule mb-5"></div>
-        <p class="eyebrow">Операционный центр</p>
-        <h1 style="font-size:clamp(2.5rem,5vw,3.5rem);margin:0;">ПАНЕЛЬ МЕНЕДЖЕРА</h1>
-        <p class="text-muted mt-2">Данные обновлены сегодня в {{ now|time:"H:i"|default:"11:54" }}</p>
+<main class="page-shell" style="padding:2.5rem 0 3.5rem;">
+    <div class="section-rule" style="margin-bottom:1.25rem;"></div>
+    <p class="eyebrow">Панель руководителя</p>
+    <h1 style="font-family:'Bebas Neue',sans-serif;font-size:clamp(2.5rem,5vw,3.5rem);line-height:1;color:var(--text);margin:0;">УПРАВЛЕНИЕ</h1>
+    <p style="margin:.5rem 0 0;font-size:.875rem;color:var(--text-muted);">Сегодня, {{ today|date:"d.m.Y" }} · Данные обновляются в реальном времени</p>
+
+    <!-- Stats -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-top:2rem;" class="stats-grid">
+        <div class="panel stat" style="padding:1.25rem;">
+            <span style="font-size:.75rem;color:var(--text-muted);">Продажи сегодня</span>
+            <b style="display:block;font-family:'Bebas Neue',sans-serif;font-size:2.5rem;line-height:1;color:var(--text);">{{ stats.revenue }} ₽</b>
+        </div>
+        <div class="panel stat" style="padding:1.25rem;">
+            <span style="font-size:.75rem;color:var(--text-muted);">Билетов продано</span>
+            <b style="display:block;font-family:'Bebas Neue',sans-serif;font-size:2.5rem;line-height:1;color:var(--primary);">{{ stats.tickets }}</b>
+        </div>
+        <div class="panel stat" style="padding:1.25rem;">
+            <span style="font-size:.75rem;color:var(--text-muted);">Заполненность</span>
+            <b style="display:block;font-family:'Bebas Neue',sans-serif;font-size:2.5rem;line-height:1;color:var(--gold);">{{ stats.occupancy }}%</b>
+        </div>
+        <div class="panel stat" style="padding:1.25rem;">
+            <span style="font-size:.75rem;color:var(--text-muted);">Сеансов сегодня</span>
+            <b style="display:block;font-family:'Bebas Neue',sans-serif;font-size:2.5rem;line-height:1;color:var(--text);">{{ stats.sessions }}</b>
+        </div>
     </div>
 
-    <!-- Stat Cards -->
-    <div class="grid-3">
-        <article class="panel p-5">
-            <div class="flex items-center justify-between text-muted">
-                <span class="text-sm">Выручка сегодня</span>
-                <span class="text-primary">💰</span>
-            </div>
-            <strong class="block mt-5" style="font-size:1.75rem;font-weight:600;">{{ revenue|default:"0" }} ₽</strong>
-            <span class="block mt-2 text-xs text-success">↑ 12,4% к прошлой неделе</span>
-        </article>
-        <article class="panel p-5">
-            <div class="flex items-center justify-between text-muted">
-                <span class="text-sm">Продано билетов</span>
-                <span class="text-primary">🎫</span>
-            </div>
-            <strong class="block mt-5" style="font-size:1.75rem;font-weight:600;">{{ tickets_sold|default:"0" }}</strong>
-            <span class="block mt-2 text-xs text-success">↑ 8,1% за день</span>
-        </article>
-        <article class="panel p-5">
-            <div class="flex items-center justify-between text-muted">
-                <span class="text-sm">Средняя загрузка</span>
-                <span class="text-primary">🪑</span>
-            </div>
-            <strong class="block mt-5" style="font-size:1.75rem;font-weight:600;">{{ occupancy|default:"0" }}%</strong>
-            <span class="block mt-2 text-xs text-success">↑ 4,7 п.п.</span>
-        </article>
-    </div>
-
-    <!-- Charts Row -->
-    <div class="flex gap-4 mt-6" style="flex-wrap:wrap;">
-        <!-- Sales Chart -->
-        <section class="panel p-5" style="flex:1.5;min-width:320px;">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm text-muted" style="margin:0;">Продажи за неделю</p>
-                    <h2 class="mt-1" style="font-size:1.25rem;margin:0.25rem 0 0;font-weight:600;">2 840 000 ₽</h2>
+    <!-- Chart + Top -->
+    <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:1rem;margin-top:1rem;" class="mgmt-grid">
+        <section class="panel" style="padding:1.25rem;">
+            <p class="eyebrow">Динамика продаж</p>
+            <h2 style="font-family:'Bebas Neue',sans-serif;font-size:1.75rem;color:var(--text);margin:0 0 1.5rem;">7 ДНЕЙ</h2>
+            <div style="display:flex;align-items:flex-end;gap:.5rem;height:180px;">
+                {% for d in chart %}
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.5rem;height:100%;justify-content:flex-end;">
+                    <span style="font-size:.625rem;color:var(--text-muted);">{{ d.revenue }}</span>
+                    <div style="width:100%;border-radius:6px 6px 0 0;background:linear-gradient(to top,var(--primary),rgba(74,140,247,.35));height:{{ d.percent }}%;min-height:4px;"></div>
+                    <span style="font-size:.625rem;color:var(--text-muted);">{{ d.day }}</span>
                 </div>
-                <span class="badge badge-blue">7 дней</span>
-            </div>
-            <div class="chart-grid mt-6" style="position:relative;height:224px;overflow:hidden;border-radius:8px;">
-                <svg viewBox="0 0 700 220" style="width:100%;height:100%;" preserveAspectRatio="none">
-                    <path d="M0 185 C70 165 85 120 145 138 S230 172 285 110 S370 145 430 88 S520 115 570 55 S650 70 700 30"
-                          fill="none" stroke="var(--primary)" stroke-width="4" vector-effect="non-scaling-stroke"/>
-                    <path d="M0 185 C70 165 85 120 145 138 S230 172 285 110 S370 145 430 88 S520 115 570 55 S650 70 700 30 V220 H0Z"
-                          fill="rgba(74,140,247,0.13)"/>
-                </svg>
+                {% endfor %}
             </div>
         </section>
 
-        <!-- Top Films -->
-        <section class="panel p-5" style="flex:1;min-width:260px;">
-            <p class="text-sm text-muted" style="margin:0;">Топ фильмов</p>
-            <div class="mt-6" style="display:flex;flex-direction:column;gap:1.25rem;">
-                {% for item in top_movies %}
+        <section class="panel" style="padding:1.25rem;">
+            <p class="eyebrow">Топ фильмов</p>
+            <h2 style="font-family:'Bebas Neue',sans-serif;font-size:1.75rem;color:var(--text);margin:0 0 1.25rem;">СПРОС</h2>
+            <div style="display:flex;flex-direction:column;gap:.75rem;">
+                {% for f in top_films %}
                 <div>
-                    <div class="flex justify-between text-sm">
-                        <span>{{ item.title }}</span>
-                        <span class="text-muted">{{ item.percent }}%</span>
+                    <div style="display:flex;justify-content:space-between;font-size:.875rem;">
+                        <span>{{ f.title }}</span>
+                        <b style="color:var(--primary);">{{ f.tickets }}</b>
                     </div>
-                    <div class="mt-2 h-2 overflow-hidden rounded-full" style="background:var(--surface-2);height:8px;">
-                        <div class="metric-bar" style="width:{{ item.percent }}%;"></div>
+                    <div style="height:6px;background:var(--surface-raised);border-radius:999px;margin-top:.375rem;overflow:hidden;">
+                        <div style="height:100%;width:{{ f.percent }}%;background:var(--primary);border-radius:999px;"></div>
                     </div>
                 </div>
                 {% empty %}
-                <p class="text-muted text-sm">Нет данных</p>
+                <p style="color:var(--text-muted);font-size:.875rem;">Нет данных</p>
                 {% endfor %}
             </div>
         </section>
     </div>
 
-    <!-- Tables -->
-    <section class="mt-6">
-        <div class="flex items-center justify-between flex-wrap gap-3">
-            <div class="tabs">
-                <button class="tab-btn active" onclick="showTable('films', this)">Фильмы</button>
-                <button class="tab-btn" onclick="showTable('halls', this)">Залы</button>
-                <button class="tab-btn" onclick="showTable('sessions', this)">Сеансы</button>
-            </div>
-            <a href="{% url 'admin:cinema_movie_add' %}" target="_blank" class="btn btn-primary">+ Добавить</a>
-        </div>
-
-        <!-- Films Table -->
-        <div class="table-panel mt-3" id="table-films">
-            <div class="panel overflow-x-auto">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Название</th>
-                            <th>Жанр</th>
-                            <th>Возраст</th>
-                            <th>Статус</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for movie in movies %}
-                        <tr>
-                            <td>{{ movie.title }}</td>
-                            <td>{{ movie.genre.name }}</td>
-                            <td>{{ movie.age_rating }}+</td>
-                            <td><span class="badge {% if movie.status == 'active' %}badge-green{% else %}badge-blue{% endif %}">{{ movie.get_status_display }}</span></td>
-                            <td style="text-align:right;">
-                                <a href="{% url 'admin:cinema_movie_change' movie.id %}" target="_blank" class="btn btn-ghost btn-sm">✏</a>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr><td colspan="5" class="text-center text-muted">Нет фильмов</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Halls Table -->
-        <div class="table-panel mt-3" id="table-halls" style="display:none;">
-            <div class="panel overflow-x-auto">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Название</th>
-                            <th>Вместимость</th>
-                            <th>Тип</th>
-                            <th>Статус</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for hall in halls %}
-                        <tr>
-                            <td>Зал {{ hall.number }}</td>
-                            <td>{{ hall.capacity }} мест</td>
-                            <td>{{ hall.get_type_display }}</td>
-                            <td><span class="badge badge-green">Открыт</span></td>
-                            <td style="text-align:right;">
-                                <a href="{% url 'admin:cinema_hall_change' hall.id %}" target="_blank" class="btn btn-ghost btn-sm">✏</a>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr><td colspan="5" class="text-center text-muted">Нет залов</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Sessions Table -->
-        <div class="table-panel mt-3" id="table-sessions" style="display:none;">
-            <div class="panel overflow-x-auto">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Фильм</th>
-                            <th>Зал</th>
-                            <th>Дата</th>
-                            <th>Время</th>
-                            <th>Статус</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for session in sessions %}
-                        <tr>
-                            <td>{{ session.movie.title }}</td>
-                            <td>Зал {{ session.hall.number }}</td>
-                            <td>{{ session.date|date:"d.m.Y" }}</td>
-                            <td>{{ session.time|time:"H:i" }}</td>
-                            <td><span class="badge {% if session.is_active %}badge-green{% else %}badge-red{% endif %}">{{ session.is_active|yesno:"Активен,Неактивен" }}</span></td>
-                            <td style="text-align:right;">
-                                <a href="{% url 'admin:cinema_session_change' session.id %}" target="_blank" class="btn btn-ghost btn-sm">✏</a>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr><td colspan="6" class="text-center text-muted">Нет сеансов</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+    <!-- Sessions table -->
+    <section style="margin-top:2rem;">
+        <p class="eyebrow">Оперативка</p>
+        <div class="panel" style="overflow:hidden;">
+            <table class="table">
+                <thead><tr><th>Время</th><th>Фильм</th><th>Зал</th><th>Продано</th><th>Выручка</th></tr></thead>
+                <tbody>
+                    {% for s in sessions %}
+                    <tr>
+                        <td><b>{{ s.time|time:"H:i" }}</b></td>
+                        <td>{{ s.movie.title }}</td>
+                        <td>{{ s.hall.number }} · {{ s.hall.get_type_display }}</td>
+                        <td>{{ s.sold }}/{{ s.total }}</td>
+                        <td style="color:var(--gold);"><b>{{ s.revenue }} ₽</b></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" style="text-align:center;color:var(--text-muted);">Сеансов нет</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </section>
 </main>
-{% endblock %}
 
-{% block extra_js %}
-<script>
-function showTable(id, btn) {
-    document.querySelectorAll('.table-panel').forEach(el => el.style.display = 'none');
-    document.querySelectorAll('.tabs .tab-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById('table-' + id).style.display = 'block';
-    btn.classList.add('active');
-}
-</script>
+<style>
+@media(max-width:1024px){.stats-grid{grid-template-columns:repeat(2,1fr)!important}.mgmt-grid{grid-template-columns:1fr!important}}
+@media(max-width:640px){.stats-grid{grid-template-columns:1fr!important}}
+</style>
 {% endblock %}

@@ -1,59 +1,35 @@
 {% extends 'base.html' %}
 {% load static %}
-
 {% block title %}Вход — Аврора{% endblock %}
 
 {% block content %}
-<main class="auth-shell flex items-center justify-center px-4 py-16">
-    <section style="width:100%;max-width:420px;">
-        <div class="mb-8">
-            <div class="section-rule mb-5"></div>
-            <p class="eyebrow">С возвращением</p>
-            <h1 style="font-size:clamp(2.5rem,5vw,3.5rem);margin:0;">ВХОД</h1>
-            <p class="text-muted mt-2">Войдите, чтобы увидеть свои билеты и заказы.</p>
-        </div>
+<main class="auth-shell" style="min-height:calc(100vh - 56px);display:flex;align-items:center;justify-content:center;padding:3rem 1rem;">
+    <div class="panel" style="width:100%;max-width:26rem;padding:2.5rem;">
+        <p class="eyebrow">С возвращением</p>
+        <h1 style="font-family:'Bebas Neue',sans-serif;font-size:2.5rem;line-height:1;color:var(--text);margin:0;">ВХОД</h1>
 
-        <form method="post" class="panel p-6" style="display:flex;flex-direction:column;gap:1rem;" novalidate>
+        <form method="post" action="{% url 'login' %}" style="display:grid;gap:1.25rem;margin-top:2rem;">
             {% csrf_token %}
-
             {% if form.non_field_errors %}
-                <div class="alert alert-danger">
-                    {% for error in form.non_field_errors %}{{ error }}{% endfor %}
-                </div>
+            <div class="alert alert-error">{{ form.non_field_errors }}</div>
             {% endif %}
 
-            <label class="text-sm">Логин
-                <div class="relative mt-2">
-                    <span class="input-group-icon">👤</span>
-                    {{ form.username }}
-                </div>
+            <label class="field">
+                <span class="field-label">Логин</span>
+                {{ form.username }}
             </label>
 
-            <label class="text-sm">Пароль
-                <div class="relative mt-2">
-                    <span class="input-group-icon">🔒</span>
-                    {{ form.password }}
-                </div>
+            <label class="field">
+                <span class="field-label">Пароль</span>
+                {{ form.password }}
             </label>
 
-            <div class="flex justify-end">
-                <button type="button" class="text-xs text-primary" style="background:none;border:none;cursor:pointer;">Забыли пароль?</button>
-            </div>
-
-            <button type="submit" class="btn btn-primary w-full h-12 rounded-full">Войти</button>
-
-            <p class="text-center text-sm text-muted" style="margin:0;">
-                Нет аккаунта? <a href="{% url 'register' %}">Зарегистрироваться</a>
-            </p>
+            <button type="submit" class="btn btn-primary" style="height:3rem;border-radius:999px;">Войти</button>
         </form>
-    </section>
-</main>
-{% endblock %}
 
-{% block extra_css %}
-<style>
-    .auth-shell { min-height: calc(100vh - 56px); }
-    .auth-shell .form-control { border: none; background: transparent; padding: 0 1rem 0 2.5rem; height: auto; padding-block: 0; color: var(--text); }
-    .auth-shell label { display: block; }
-</style>
+        <p style="text-align:center;font-size:.875rem;color:var(--text-muted);margin-top:1.5rem;">
+            Нет аккаунта? <a href="{% url 'register' %}" style="color:var(--primary);">Зарегистрироваться</a>
+        </p>
+    </div>
+</main>
 {% endblock %}

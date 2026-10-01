@@ -1,100 +1,91 @@
 {% extends 'base.html' %}
 {% load static %}
-
 {% block title %}Касса — Аврора{% endblock %}
 
 {% block content %}
-<main class="page-shell py-10">
-    <!-- Title -->
-    <div class="mb-8">
-        <div class="section-rule mb-5"></div>
-        <p class="eyebrow">Рабочее место</p>
-        <h1 style="font-size:clamp(2.5rem,5vw,3.5rem);margin:0;">КАССА</h1>
-        <p class="text-muted mt-2">Смена №184 · Кассир: {{ user.get_full_name|default:user.username }}</p>
-    </div>
+<main class="page-shell" style="padding:2rem 0 3.5rem;">
+    <div class="section-rule" style="margin-bottom:1.25rem;"></div>
+    <p class="eyebrow">Рабочее место</p>
+    <h1 style="font-family:'Bebas Neue',sans-serif;font-size:clamp(2.5rem,5vw,3.5rem);line-height:1;color:var(--text);margin:0;">КАССА</h1>
+    <p style="margin:.5rem 0 0;font-size:.875rem;color:var(--text-muted);">Смена №184 · Кассир: {{ user.get_full_name|default:user.username }}</p>
 
-    <div class="flex gap-6" style="align-items:flex-start;flex-wrap:wrap;">
-        <!-- Left: Sessions -->
-        <section style="flex:1;min-width:300px;">
-            <!-- Search -->
-            <div class="panel p-4 flex gap-3" style="flex-wrap:wrap;align-items:center;">
-                <div class="input-group" style="flex:1;min-width:200px;position:relative;">
-                    <span class="input-group-icon">🔍</span>
+    <div style="display:grid;gap:1.5rem;grid-template-columns:1fr 330px;align-items:start;margin-top:2rem;" class="cashier-grid">
+        <!-- Sessions -->
+        <section>
+            <div class="panel" style="display:grid;gap:.75rem;padding:1rem;grid-template-columns:1fr auto;align-items:center;" class="search-row">
+                <label style="position:relative;">
+                    <svg style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--text-muted);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                     <input type="text" class="form-control" style="height:44px;padding-left:2.5rem;" placeholder="Фильм, номер заказа или билет">
-                </div>
+                </label>
                 <button class="btn btn-outline" style="height:44px;">📅 Сегодня</button>
             </div>
 
-            <!-- Film cards -->
-            <div class="flex flex-col gap-3 mt-5">
+            <div style="display:flex;flex-direction:column;gap:.75rem;margin-top:1.25rem;">
                 {% for session in sessions %}
-                <article class="panel p-4">
-                    <div class="flex items-center justify-between flex-wrap gap-3">
+                <article class="panel" style="padding:1rem;">
+                    <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.75rem;">
                         <div>
-                            <h2 style="font-size:1.5rem;margin:0;">{{ session.movie.title }}</h2>
-                            <p class="text-xs text-muted" style="margin:0.25rem 0 0;">
-                                Зал {{ session.hall.number }} · {{ session.hall.get_type_display }} · {{ session.movie.duration }} мин
-                            </p>
+                            <h2 style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:var(--text);margin:0;">{{ session.movie.title }}</h2>
+                            <p style="margin:.25rem 0 0;font-size:.75rem;color:var(--text-muted);">Зал {{ session.hall.number }} · {{ session.hall.get_type_display }} · {{ session.movie.duration }} мин</p>
                         </div>
                         {% if forloop.first %}
-                            <span class="badge badge-green">Идёт продажа</span>
+                        <span class="badge badge-green">Идёт продажа</span>
                         {% else %}
-                            <span class="badge badge-blue">Доступно</span>
+                        <span class="badge badge-blue">Доступно</span>
                         {% endif %}
                     </div>
-                    <div class="flex flex-wrap gap-2 mt-4">
+                    <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem;align-items:center;">
                         <button class="session-pill selected">{{ session.time|time:"H:i" }}</button>
-                        <span class="text-xs text-muted flex items-center gap-2" style="margin-left:auto;">
-                            {{ session.get_available_seats.count }} свободно
-                        </span>
+                        <span style="font-size:.75rem;color:var(--text-muted);margin-left:auto;">{{ session.get_available_seats.count }} свободно</span>
                     </div>
-                    <div class="mt-3">
-                        <a href="#" class="btn btn-outline btn-sm">Выбрать места</a>
+                    <div style="margin-top:.75rem;">
+                        <a href="{% url 'booking' session.id %}" class="btn btn-outline btn-sm">Выбрать места</a>
                     </div>
                 </article>
                 {% empty %}
-                <div class="empty-state panel">
-                    <p>Сеансов на сегодня нет</p>
-                </div>
+                <div class="empty-state panel"><p>Сеансов на сегодня нет</p></div>
                 {% endfor %}
             </div>
         </section>
 
-        <!-- Right: Order -->
-        <aside class="panel p-5" style="width:330px;min-width:280px;position:sticky;top:76px;">
+        <!-- Order -->
+        <aside class="panel" style="padding:1.25rem;position:sticky;top:76px;">
             <p class="eyebrow">Текущий заказ</p>
-            <h2 style="font-size:1.75rem;margin:0;">—</h2>
-            <p class="text-sm text-muted mt-1" style="margin:0.25rem 0 0;">Выберите сеанс слева</p>
+            <h2 style="font-family:'Bebas Neue',sans-serif;font-size:1.75rem;color:var(--text);margin:0;">—</h2>
+            <p style="margin:.25rem 0 0;font-size:.875rem;color:var(--text-muted);">Выберите сеанс слева</p>
 
-            <div class="mt-5 border-t border-b text-sm" style="padding:1rem 0;">
-                <p class="text-muted">Места появятся после выбора</p>
+            <div style="border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:1rem 0;margin-top:1.25rem;">
+                <p style="font-size:.875rem;color:var(--text-muted);margin:0;">Места появятся после выбора</p>
             </div>
 
-            <div class="flex justify-between border-t mt-4 pt-4">
+            <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:1rem;margin-top:1rem;">
                 <b>К оплате</b>
-                <b class="text-xl">0 ₽</b>
+                <b style="font-size:1.25rem;">0 ₽</b>
             </div>
 
-            <div class="grid grid-2 gap-2 mt-5">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-top:1.25rem;">
                 <button class="btn btn-primary" disabled>💳 Картой</button>
                 <button class="btn btn-secondary" disabled>💵 Наличными</button>
             </div>
-            <button class="btn btn-outline w-full mt-2" disabled>🎫 Продать билет</button>
-            <button class="btn btn-danger w-full mt-5" disabled>↩ Оформить возврат</button>
+            <button class="btn btn-outline w-full" style="margin-top:.5rem;" disabled>🎫 Продать билет</button>
+            <button class="btn btn-danger w-full" style="margin-top:1.25rem;" disabled>↩ Оформить возврат</button>
         </aside>
     </div>
 
-    <!-- Return Section -->
-    <div class="mt-8">
+    <!-- Return -->
+    <div style="margin-top:2rem;">
         <p class="eyebrow">Возврат</p>
-        <div class="panel p-4 flex gap-3" style="flex-wrap:wrap;align-items:center;">
-            <div class="input-group" style="flex:1;min-width:250px;position:relative;">
-                <span class="input-group-icon">▮▮▯</span>
-                <input type="text" class="form-control" style="height:44px;padding-left:2.5rem;" placeholder="Штрихкод билета" id="refundBarcode">
+        <div class="panel" style="display:flex;gap:.75rem;padding:1rem;flex-wrap:wrap;align-items:center;">
+            <div style="flex:1;min-width:250px;position:relative;">
+                <input type="text" class="form-control" style="height:44px;padding-left:2.5rem;" placeholder="Штрихкод билета">
             </div>
             <button class="btn btn-outline" style="height:44px;">Проверить</button>
             <button class="btn btn-danger" style="height:44px;" disabled>Вернуть</button>
         </div>
     </div>
 </main>
+
+<style>
+@media(max-width:1100px){.cashier-grid{grid-template-columns:1fr!important}}
+</style>
 {% endblock %}
