@@ -381,9 +381,19 @@ a:hover { color: var(--gold); }
 .film-card-sessions {
   margin-top: auto;
   padding-top: 1rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+}
+.film-card-sessions .session-pill {
+  min-width: 0;
+  width: 100%;
+  padding: 0.45rem 0.2rem;
+  font-size: 0.72rem;
+}
+.film-card-sessions > span {
+  grid-column: 1 / -1;
+  text-align: center;
 }
 
 /* Panel */
