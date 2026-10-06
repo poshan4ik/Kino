@@ -21,20 +21,23 @@ class Command(BaseCommand):
             status__in=['created', 'pending_payment'],
             expires_at__lt=now
         ).select_related('session', 'session__movie', 'seat', 'client')
-        
-        count = expired_bookings.count()
-        
+
+        # Материализуем список ДО update(): QuerySet ленивый,
+        # после update() повторный запрос вернул бы уже пустой результат
+        bookings_list = list(expired_bookings)
+        count = len(bookings_list)
+
         if count == 0:
             self.stdout.write(
                 self.style.SUCCESS('Просроченных бронирований не найдено')
             )
             return
-        
+
         if dry_run:
             self.stdout.write(
                 self.style.WARNING(f'[DRY RUN] Найдено {count} просроченных бронирований:')
             )
-            for booking in expired_bookings:
+            for booking in bookings_list:
                 self.stdout.write(
                     f'  #{booking.id} | {booking.client.username} | '
                     f'{booking.session.movie.title} | '
@@ -42,12 +45,12 @@ class Command(BaseCommand):
                     f'Истёк {booking.expires_at.strftime("%d.%m.%Y %H:%M")}'
                 )
         else:
-            expired_bookings.update(status='expired')
+            Booking.objects.filter(id__in=[b.id for b in bookings_list]).update(status='expired')
             self.stdout.write(
                 self.style.SUCCESS(f'Успешно отменено {count} просроченных бронирований')
             )
-            
-            for booking in expired_bookings:
+
+            for booking in bookings_list:
                 self.stdout.write(
                     f'  Отменено: #{booking.id} | {booking.client.username} | '
                     f'{booking.session.movie.title}'

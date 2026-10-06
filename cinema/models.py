@@ -315,10 +315,87 @@ class Payment(models.Model):
     
     def __str__(self):
         return f'Платёж #{self.id} - {self.amount} руб. ({self.get_status_display()})'
-    
-    def complete(self):
-        self.status = 'completed'
-        self.completed_at = timezone.now()
-        self.save(update_fields=['status', 'completed_at'])
-        self.ticket.booking.status = 'paid'
-        self.ticket.booking.save(update_fields=['status'])
+
+
+class AuditLog(models.Model):
+    """Журнал аудита ключевых операций (ТЗ): кто, что, когда"""
+    user = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='audit_logs', verbose_name='Пользователь'
+    )
+    action = models.CharField(max_length=100, verbose_name='Действие')
+    details = models.TextField(blank=True, verbose_name='Детали')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Создано')
+
+    class Meta:
+        verbose_name = 'Запись аудита'
+        verbose_name_plural = 'Журнал аудита'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        user = self.user.username if self.user else '—'
+        return f'[{self.created_at:%d.%m.%Y %H:%M}] {user}: {self.action}'
+
+
+def log_audit(user, action, details=''):
+    """Пишет запись в журнал аудита. user — анонимный/неаутентифицированный → None"""
+    if user is not None and not getattr(user, 'is_authenticated', False):
+        user = None
+    try:
+        AuditLog.objects.create(user=user, action=action, details=details)
+    except Exception:
+        # Журнал аудита не должен ронять основную операцию
+        pass
+
+
+class Favorite(models.Model):
+    """Избранные фильмы пользователя"""
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='favorites',
+        verbose_name='Пользователь'
+    )
+    movie = models.ForeignKey(
+        Movie, on_delete=models.CASCADE, related_name='favorited_by',
+        verbose_name='Фильм'
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Добавлено')
+
+    class Meta:
+        verbose_name = 'Избранное'
+        verbose_name_plural = 'Избранное'
+        ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'movie'], name='unique_favorite'),
+        ]
+
+    def __str__(self):
+        return f'{self.user} → {self.movie}'
+
+
+class Review(models.Model):
+    """Отзыв и оценка фильма (1–5), одна на пользователя"""
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='reviews',
+        verbose_name='Пользователь'
+    )
+    movie = models.ForeignKey(
+        Movie, on_delete=models.CASCADE, related_name='reviews',
+        verbose_name='Фильм'
+    )
+    rating = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        verbose_name='Оценка'
+    )
+    comment = models.TextField(blank=True, verbose_name='Комментарий')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Создан')
+
+    class Meta:
+        verbose_name = 'Отзыв'
+        verbose_name_plural = 'Отзывы'
+        ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'movie'], name='unique_review_per_user'),
+        ]
+
+    def __str__(self):
+        return f'{self.movie}: {self.user} — {self.rating}/5'

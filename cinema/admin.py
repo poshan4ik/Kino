@@ -1,6 +1,9 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import User, Genre, Movie, Hall, Seat, Session, Booking, Ticket, Payment
+from .models import (
+    User, Genre, Movie, Hall, Seat, Session, Booking, Ticket, Payment,
+    AuditLog, log_audit, Favorite, Review,
+)
 
 
 @admin.register(User)
@@ -78,6 +81,29 @@ class SessionAdmin(admin.ModelAdmin):
     list_editable = ['is_active']
     date_hierarchy = 'date'
 
+    def save_model(self, request, obj, form, change):
+        """Журналируем изменение цен/расписания сеанса"""
+        changes = []
+        if change:
+            try:
+                old = Session.objects.get(pk=obj.pk)
+            except Session.DoesNotExist:
+                old = None
+            if old:
+                for field, label in [
+                    ('date', 'дата'), ('time', 'время'), ('movie', 'фильм'),
+                    ('hall', 'зал'), ('is_active', 'активность'),
+                ]:
+                    if getattr(old, field) != getattr(obj, field):
+                        changes.append(f'{label}: {getattr(old, field)} → {getattr(obj, field)}')
+                for field in ['price_standard', 'price_comfort', 'price_vip']:
+                    if getattr(old, field) != getattr(obj, field):
+                        changes.append(f'{field}: {getattr(old, field)} → {getattr(obj, field)}')
+        super().save_model(request, obj, form, change)
+        if change and changes:
+            log_audit(request.user, 'update_session',
+                      f'Сеанс #{obj.id} ({obj.movie.title}): ' + '; '.join(changes))
+
 
 @admin.register(Booking)
 class BookingAdmin(admin.ModelAdmin):
@@ -108,3 +134,48 @@ class PaymentAdmin(admin.ModelAdmin):
     ordering = ['-created_at']
     readonly_fields = ['created_at', 'completed_at']
     date_hierarchy = 'created_at'
+
+
+@admin.register(AuditLog)
+class AuditLogAdmin(admin.ModelAdmin):
+    """Журнал аудита — только чтение (без добавления/редактирования/удаления)"""
+    list_display = ['created_at', 'user', 'action', 'short_details']
+    list_filter = ['action', 'created_at']
+    search_fields = ['user__username', 'action', 'details']
+    ordering = ['-created_at']
+    date_hierarchy = 'created_at'
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    @admin.display(description='Детали')
+    def short_details(self, obj):
+        return obj.details[:80] + ('…' if len(obj.details) > 80 else '')
+
+
+@admin.register(Favorite)
+class FavoriteAdmin(admin.ModelAdmin):
+    list_display = ['user', 'movie', 'created_at']
+    list_filter = ['created_at']
+    search_fields = ['user__username', 'movie__title']
+    ordering = ['-created_at']
+    date_hierarchy = 'created_at'
+
+
+@admin.register(Review)
+class ReviewAdmin(admin.ModelAdmin):
+    list_display = ['movie', 'user', 'rating', 'short_comment', 'created_at']
+    list_filter = ['rating', 'created_at']
+    search_fields = ['user__username', 'movie__title', 'comment']
+    ordering = ['-created_at']
+    date_hierarchy = 'created_at'
+
+    @admin.display(description='Комментарий')
+    def short_comment(self, obj):
+        return obj.comment[:60] + ('…' if len(obj.comment) > 60 else '')

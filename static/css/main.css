@@ -284,6 +284,47 @@ a:hover { color: var(--gold); }
   border-color: var(--destructive-40);
 }
 
+/* Movie card badges (премьера / последние сеансы) */
+.film-card-badges {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  z-index: 2;
+}
+
+/* Favorite toggle button on poster */
+.fav-btn {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(20, 21, 26, 0.74);
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0.85;
+  transition: color 0.2s ease, opacity 0.2s ease, transform 0.2s ease;
+}
+.fav-btn:hover {
+  opacity: 1;
+  transform: scale(1.08);
+}
+.fav-btn.active {
+  color: var(--gold);
+  border-color: var(--gold-45);
+  opacity: 1;
+}
+
 /* Session Pill */
 .session-pill {
   min-width: 64px;
@@ -319,6 +360,10 @@ a:hover { color: var(--gold); }
   min-width: 0;
   display: flex;
   flex-direction: column;
+  transition: transform 0.25s ease;
+}
+.film-card:hover {
+  transform: translateY(-4px);
 }
 .poster-box {
   position: relative;
@@ -499,6 +544,19 @@ a:hover { color: var(--gold); }
     var(--text) 5px 6px,
     transparent 6px 10px
   );
+}
+.ticket-qr {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 96px;
+  min-height: 96px;
+}
+.ticket-qr img,
+.ticket-qr canvas {
+  display: block;
+  width: 96px;
+  height: 96px;
 }
 @media (min-width: 640px) {
   .ticket-stub { grid-template-columns: 1fr 220px; }

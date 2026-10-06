@@ -1,14 +1,25 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from django.core.exceptions import ImproperlyConfigured
 
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-dev-key-change-in-production')
-
 DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
+
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
+if not SECRET_KEY:
+    if DEBUG:
+        # Локальная разработка: допустим временный ключ
+        SECRET_KEY = 'django-insecure-dev-key-change-in-production'
+    else:
+        # Прод: тихий небезопасный ключ недопустим
+        raise ImproperlyConfigured(
+            'DJANGO_SECRET_KEY must be set when DEBUG=False. '
+            'Set it in .env or environment variables.'
+        )
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 

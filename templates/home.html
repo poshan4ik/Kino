@@ -91,8 +91,23 @@
                              width="800" height="1200" loading="lazy">
                         {% endif %}
                         <div class="poster-shade"></div>
+                        {% if movie.badges %}
+                        <div class="film-card-badges">
+                            {% for label, cls in movie.badges %}
+                            <span class="badge {{ cls }}">{{ label }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <button type="button" class="fav-btn {% if movie.id in favorite_ids %}active{% endif %}"
+                                data-movie="{{ movie.id }}"
+                                data-auth="{% if user.is_authenticated %}1{% else %}0{% endif %}"
+                                aria-label="В избранное" aria-pressed="{% if movie.id in favorite_ids %}true{% else %}false{% endif %}">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        </button>
                         <div style="position:absolute;bottom:.75rem;left:.75rem;right:.75rem;display:flex;align-items:flex-end;justify-content:space-between;gap:.5rem;">
-                            <span class="badge badge-gold">★ 8.0</span>
+                            <span class="badge badge-gold">
+                                {% if movie.average_rating %}★ {{ movie.average_rating|floatformat:1 }}{% else %}★ —{% endif %}
+                            </span>
                             <span class="badge">{{ movie.age_rating }}+</span>
                         </div>
                     </div>
@@ -136,5 +151,33 @@ function applyFilter(){
         c.style.display=ok?'':'none';
     });
 }
+function getCookie(name){
+    var m=document.cookie.match('(^|;)\\s*'+name+'\\s*=\\s*([^;]+)');
+    return m?decodeURIComponent(m.pop()):'';
+}
+document.querySelectorAll('.fav-btn').forEach(function(btn){
+    btn.addEventListener('click',function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        if(btn.dataset.auth!=='1'){
+            window.location='/login/?next=/';
+            return;
+        }
+        var movieId=btn.dataset.movie;
+        var isFav=btn.classList.contains('active');
+        fetch('/api/favorites/'+movieId+'/',{
+            method:isFav?'DELETE':'POST',
+            headers:{'X-CSRFToken':getCookie('csrftoken'),'X-Requested-With':'XMLHttpRequest'},
+        }).then(function(r){
+            if(r.status===403||r.status===401){
+                window.location='/login/?next=/';
+                return;
+            }
+            if(!r.ok) throw new Error();
+            btn.classList.toggle('active',!isFav);
+            btn.setAttribute('aria-pressed',String(!isFav));
+        }).catch(function(){});
+    });
+});
 </script>
 {% endblock %}

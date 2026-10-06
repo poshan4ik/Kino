@@ -21,6 +21,9 @@
             <button class="tab-btn" onclick="stab('p',this)" style="justify-content:flex-start;">
                 💳 Платежи
             </button>
+            <button class="tab-btn" onclick="stab('f',this)" style="justify-content:flex-start;">
+                ★ Избранное
+            </button>
             <button class="tab-btn" onclick="stab('s',this)" style="justify-content:flex-start;">
                 ⚙ Настройки
             </button>
@@ -47,6 +50,7 @@
                             <div class="ticket-code">
                                 <span style="color:var(--primary);font-size:1.125rem;">🎫</span>
                                 <div class="barcode" aria-label="Штрихкод билета"></div>
+                                <div class="ticket-qr" data-qr="{{ b.ticket.barcode }}" aria-label="QR-код билета"></div>
                                 <span style="font-size:.75rem;color:var(--text-muted);">{{ b.ticket.barcode }}</span>
                             </div>
                         </article>
@@ -78,6 +82,36 @@
                         {% endif %}
                     {% empty %}
                     <div class="empty-state panel"><p>История пока пуста</p></div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Favorites -->
+            <div class="pTab" id="tab-f" style="display:none;">
+                <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--text);margin:0 0 1.25rem;">ИЗБРАННОЕ</h2>
+                <div style="display:flex;flex-direction:column;gap:1rem;">
+                    {% for f in favorites %}
+                    <article class="panel" style="padding:1.25rem;display:flex;gap:1rem;align-items:center;flex-wrap:wrap;">
+                        <div style="width:56px;flex-shrink:0;border-radius:8px;overflow:hidden;">
+                            {% if f.movie.poster %}
+                            <img src="{{ f.movie.poster.url }}" alt="{{ f.movie.title }}" width="800" height="1200" style="width:100%;aspect-ratio:2/3;object-fit:cover;display:block;">
+                            {% else %}
+                            <div style="width:100%;aspect-ratio:2/3;background:var(--panel);"></div>
+                            {% endif %}
+                        </div>
+                        <div style="flex:1;min-width:160px;">
+                            <h3 style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:var(--text);margin:0;">
+                                <a href="{% url 'movie_detail' f.movie.id %}" style="color:inherit;text-decoration:none;">{{ f.movie.title }}</a>
+                            </h3>
+                            <p style="margin:.25rem 0 0;font-size:.8125rem;color:var(--text-muted);">
+                                {{ f.movie.genre.name }} · {{ f.movie.age_rating }}+
+                                {% if f.average_rating %} · <span style="color:var(--gold);">★ {{ f.average_rating|floatformat:1 }}</span>{% endif %}
+                            </p>
+                        </div>
+                        <button type="button" class="btn btn-outline btn-sm fav-remove" data-movie="{{ f.movie.id }}">Убрать</button>
+                    </article>
+                    {% empty %}
+                    <div class="empty-state panel"><p>В избранном пока ничего нет — добавляйте фильмы кнопкой ★</p></div>
                     {% endfor %}
                 </div>
             </div>
@@ -125,12 +159,40 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 function stab(id,btn){
     document.querySelectorAll('.pTab').forEach(function(e){e.style.display='none'});
     document.querySelectorAll('#pTabs .tab-btn').forEach(function(b){b.classList.remove('active')});
     document.getElementById('tab-'+id).style.display='block';
     btn.classList.add('active');
+}
+function getCookie(name){
+    var m=document.cookie.match('(^|;)\\s*'+name+'\\s*=\\s*([^;]+)');
+    return m?decodeURIComponent(m.pop()):'';
+}
+document.querySelectorAll('.fav-remove').forEach(function(btn){
+    btn.addEventListener('click',function(){
+        fetch('/api/favorites/'+btn.dataset.movie+'/',{
+            method:'DELETE',
+            headers:{'X-CSRFToken':getCookie('csrftoken'),'X-Requested-With':'XMLHttpRequest'},
+        }).then(function(r){
+            if(!r.ok) throw new Error();
+            location.reload();
+        }).catch(function(){});
+    });
+});
+if(typeof QRCode!=='undefined'){
+    document.querySelectorAll('.ticket-qr[data-qr]').forEach(function(el){
+        new QRCode(el,{
+            text:el.dataset.qr,
+            width:96,
+            height:96,
+            colorDark:'#000000',
+            colorLight:'#ffffff',
+            correctLevel:QRCode.CorrectLevel.M,
+        });
+    });
 }
 </script>
 {% endblock %}

@@ -2,19 +2,24 @@ from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
-from django.db.models import Count, Sum, Q, F
+from django.db.models import Count, Sum, Q, F, Avg
+from django.db.models.functions import TruncDate
+from django.db import transaction, connection
+from django.db.utils import IntegrityError
 from django.utils import timezone
 from datetime import timedelta, date
 import uuid
 
-from .models import User, Genre, Movie, Hall, Seat, Session, Booking, Ticket, Payment
+from .models import User, Genre, Movie, Hall, Seat, Session, Booking, Ticket, Payment, AuditLog, Favorite, Review, log_audit
 from .serializers import (
     UserSerializer, UserCreateSerializer, GenreSerializer, MovieSerializer,
     MovieListSerializer, HallSerializer, SeatSerializer, SessionSerializer,
     SessionListSerializer, BookingSerializer, BookingCreateSerializer,
     TicketSerializer, PaymentSerializer, PaymentCreateSerializer,
-    DashboardStatsSerializer
+    DashboardStatsSerializer, FavoriteSerializer, ReviewSerializer,
+    ReviewCreateSerializer
 )
 from .permissions import (
     IsAdminOrManager, IsAdmin, IsCashierOrAbove, IsControllerOrAbove,
@@ -73,7 +78,13 @@ class MovieViewSet(viewsets.ModelViewSet):
     filterset_fields = ['genre', 'status', 'age_rating']
     search_fields = ['title', 'description']
     ordering_fields = ['title', 'created_at', 'duration']
-    
+
+    def get_queryset(self):
+        return Movie.objects.select_related('genre').annotate(
+            average_rating=Avg('reviews__rating'),
+            reviews_count=Count('reviews', distinct=True),
+        )
+
     def get_serializer_class(self):
         if self.action == 'list':
             return MovieListSerializer
@@ -230,10 +241,12 @@ class BookingViewSet(viewsets.ModelViewSet):
             status='completed',
             completed_at=timezone.now()
         )
-        
-        booking.status = 'paid'
-        booking.save()
-        
+        # Статус Booking → paid и Ticket → active ставит сигнал payment_post_save
+
+        log_audit(request.user, 'confirm_payment',
+                  f'Оплата брони #{booking.id} ({booking.session.movie.title}), '
+                  f'билет {ticket.barcode}, {ticket.price} руб.')
+
         return Response(TicketSerializer(ticket, context={'request': request}).data)
     
     @action(detail=True, methods=['post'], permission_classes=[IsCashierOrAbove])
@@ -247,7 +260,11 @@ class BookingViewSet(viewsets.ModelViewSet):
         if hasattr(booking, 'ticket'):
             booking.ticket.status = 'cancelled'
             booking.ticket.save()
-        
+
+        log_audit(request.user, 'cancel_booking',
+                  f'Отмена брони #{booking.id} ({booking.session.movie.title}), '
+                  f'место {booking.seat.row}/{booking.seat.number}')
+
         return Response(BookingSerializer(booking, context={'request': request}).data)
     
     @action(detail=False, methods=['post'], permission_classes=[IsCashierOrAbove])
@@ -482,7 +499,7 @@ class DashboardViewSet(viewsets.ViewSet):
             total=Sum('amount')
         ).order_by('-total')
         
-        daily = payments.extra(select={'day': 'date(completed_at)'}).values('day').annotate(
+        daily = payments.annotate(day=TruncDate('completed_at')).values('day').annotate(
             tickets=Count('id'),
             revenue=Sum('amount')
         ).order_by('day')
@@ -506,18 +523,108 @@ from django.db.models import Prefetch
 from .forms import RegisterForm
 
 
+class FavoriteListAPIView(APIView):
+    """GET /api/favorites/ — избранные фильмы текущего пользователя"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        favorites = request.user.favorites.select_related('movie').all()
+        return Response(FavoriteSerializer(favorites, many=True).data)
+
+
+class FavoriteToggleAPIView(APIView):
+    """POST /api/favorites/{movie_id}/ — добавить, DELETE — убрать"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, movie_id):
+        movie = get_object_or_404(Movie, pk=movie_id)
+        favorite, created = Favorite.objects.get_or_create(
+            user=request.user, movie=movie
+        )
+        return Response(
+            FavoriteSerializer(favorite).data,
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+
+    def delete(self, request, movie_id):
+        Favorite.objects.filter(user=request.user, movie_id=movie_id).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class MovieReviewsAPIView(APIView):
+    """GET /api/movies/{movie_id}/reviews/ — отзывы и рейтинг фильма"""
+    permission_classes = [AllowAny]
+
+    def get(self, request, movie_id):
+        movie = get_object_or_404(Movie, pk=movie_id)
+        reviews = movie.reviews.select_related('user').all()
+        summary = movie.reviews.aggregate(
+            average=Avg('rating'), count=Count('id')
+        )
+        return Response({
+            'movie': movie.id,
+            'rating': round(float(summary['average']), 1)
+            if summary['average'] is not None else None,
+            'count': summary['count'],
+            'results': ReviewSerializer(reviews, many=True).data,
+        })
+
+
+class ReviewListCreateAPIView(APIView):
+    """GET /api/reviews/ — список отзывов, POST — создать/обновить свой отзыв"""
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        reviews = Review.objects.select_related('user', 'movie').all()
+        return Response(ReviewSerializer(reviews, many=True).data)
+
+    def post(self, request):
+        serializer = ReviewCreateSerializer(
+            data=request.data, context={'request': request}
+        )
+        serializer.is_valid(raise_exception=True)
+        review = serializer.save()
+        return Response(ReviewSerializer(review).data, status=status.HTTP_201_CREATED)
+
+
+def movie_badges(first_date, last_date):
+    """Бейджи карточки фильма: «Премьера» и «Последние сеансы» (п.12)"""
+    badges = []
+    today = date.today()
+    if first_date is not None and (first_date - today).days <= 7:
+        badges.append(('Премьера', 'badge-gold'))
+    if last_date is not None and (last_date - today).days <= 3:
+        badges.append(('Последние сеансы', 'badge-red'))
+    return badges
+
+
 class HomeView(TemplateView):
     template_name = 'home.html'
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['movies'] = Movie.objects.filter(
+        movies = list(Movie.objects.filter(
             status='active'
-        ).select_related('genre').prefetch_related(
+        ).select_related('genre').annotate(
+            average_rating=Avg('reviews__rating'),
+            reviews_count=Count('reviews', distinct=True),
+        ).prefetch_related(
             Prefetch('sessions', queryset=Session.objects.filter(
                 date__gte=date.today(), is_active=True
             ).order_by('date', 'time'))
-        )[:12]
+        )[:12])
+        for movie in movies:
+            session_dates = [s.date for s in movie.sessions.all()]
+            movie.badges = movie_badges(
+                session_dates[0], session_dates[-1]
+            ) if session_dates else []
+        context['movies'] = movies
+        if self.request.user.is_authenticated:
+            context['favorite_ids'] = set(
+                self.request.user.favorites.values_list('movie_id', flat=True)
+            )
+        else:
+            context['favorite_ids'] = set()
         return context
 
 
@@ -526,12 +633,18 @@ class MovieDetailView(TemplateView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        movie = get_object_or_404(Movie.objects.select_related('genre'), pk=kwargs['pk'])
+        movie = get_object_or_404(
+            Movie.objects.select_related('genre').annotate(
+                average_rating=Avg('reviews__rating'),
+                reviews_count=Count('reviews', distinct=True),
+            ),
+            pk=kwargs['pk'],
+        )
         context['movie'] = movie
         
-        sessions = movie.sessions.filter(
+        sessions = list(movie.sessions.filter(
             date__gte=date.today(), is_active=True
-        ).select_related('hall').order_by('date', 'time')
+        ).select_related('hall').order_by('date', 'time'))
         
         sessions_by_date = {}
         for session in sessions:
@@ -541,6 +654,18 @@ class MovieDetailView(TemplateView):
             sessions_by_date[date_key].append(session)
         
         context['sessions_by_date'] = sessions_by_date
+        context['reviews'] = movie.reviews.select_related('user').all()
+        context['badges'] = movie_badges(
+            sessions[0].date, sessions[-1].date
+        ) if sessions else []
+
+        user = self.request.user
+        if user.is_authenticated:
+            context['is_favorite'] = user.favorites.filter(movie=movie).exists()
+            context['user_review'] = Review.objects.filter(user=user, movie=movie).first()
+        else:
+            context['is_favorite'] = False
+            context['user_review'] = None
         return context
 
 
@@ -594,34 +719,51 @@ class BookingView(LoginRequiredMixin, TemplateView):
         
         seats = Seat.objects.filter(id__in=seat_ids, hall=session.hall)
         if seats.count() != len(seat_ids):
-            messages.error(request, 'Некорректные места')
+            messages.error(request, 'Некорректный выбор мест')
             return redirect('booking', session_id=session.id)
-        
-        # Проверка доступности
-        booked = Booking.objects.filter(
-            session=session,
-            seat__in=seats,
-            status__in=['created', 'pending_payment', 'paid', 'used']
-        ).exists()
-        
-        if booked:
-            messages.error(request, 'Одно или несколько мест уже заняты')
-            return redirect('booking', session_id=session.id)
-        
-        # Создание броней
+
         from django.utils import timezone
         from datetime import timedelta
         expires_at = timezone.now() + timedelta(minutes=15)
-        
-        for seat in seats:
-            Booking.objects.create(
-                client=request.user,
-                session=session,
-                seat=seat,
-                status='pending_payment',
-                expires_at=expires_at
+        active_statuses = ['created', 'pending_payment', 'paid', 'used']
+
+        class SeatTaken(Exception):
+            pass
+
+        try:
+            # Всё или ничего: все брони создаются внутри одной транзакции
+            with transaction.atomic():
+                seats_qs = Seat.objects.filter(id__in=seat_ids, hall=session.hall)
+                if connection.features.has_select_for_update:
+                    seats_qs = seats_qs.select_for_update()
+                seats = list(seats_qs)
+
+                booked_qs = Booking.objects.filter(
+                    session=session, seat__in=seats, status__in=active_statuses
+                )
+                if connection.features.has_select_for_update:
+                    booked_qs = booked_qs.select_for_update()
+                if booked_qs.exists():
+                    raise SeatTaken()
+
+                for seat in seats:
+                    Booking.objects.create(
+                        client=request.user,
+                        session=session,
+                        seat=seat,
+                        status='pending_payment',
+                        expires_at=expires_at
+                    )
+        except SeatTaken:
+            messages.error(request, 'Одно или несколько мест уже заняты')
+            return redirect('booking', session_id=session.id)
+        except IntegrityError:
+            messages.error(
+                request,
+                'Это место только что забронировали, выберите другое'
             )
-        
+            return redirect('booking', session_id=session.id)
+
         messages.success(request, f'Забронировано {len(seat_ids)} мест. Ожидает оплаты.')
         return redirect('profile')
 
@@ -652,7 +794,14 @@ class ProfileView(LoginRequiredMixin, TemplateView):
         ).select_related(
             'ticket', 'ticket__booking', 'ticket__booking__session', 'ticket__booking__session__movie'
         ).order_by('-created_at')
-        
+
+        context['favorites'] = user.favorites.select_related(
+            'movie', 'movie__genre'
+        ).annotate(
+            average_rating=Avg('movie__reviews__rating'),
+            reviews_count=Count('movie__reviews', distinct=True),
+        )
+
         return context
 
 

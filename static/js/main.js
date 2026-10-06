@@ -7,12 +7,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Инициализация выпадающих меню
     initDropdowns();
     
-    // Обработка формы бронирования
-    initBookingForm();
-    
-    // Обработка схемы зала
-    initHallSchema();
-    
     // Автообновление таймеров
     initTimers();
     
@@ -34,111 +28,6 @@ function initDropdowns() {
     dropdownElementList.map(function(dropdownToggleEl) {
         return new bootstrap.Dropdown(dropdownToggleEl);
     });
-}
-
-// Форма бронирования
-function initBookingForm() {
-    const bookingForms = document.querySelectorAll('.booking-form');
-    bookingForms.forEach(form => {
-        form.addEventListener('submit', handleBookingSubmit);
-    });
-    
-    // Выбор сеанса
-    const sessionPills = document.querySelectorAll('.session-pill-btn');
-    sessionPills.forEach(pill => {
-        pill.addEventListener('click', function() {
-            if (!this.disabled) {
-                sessionPills.forEach(p => p.classList.remove('selected'));
-                this.classList.add('selected');
-                const input = document.querySelector('#id_session');
-                if (input) input.value = this.dataset.sessionId;
-            }
-        });
-    });
-}
-
-async function handleBookingSubmit(e) {
-    e.preventDefault();
-    const form = e.target;
-    const submitBtn = form.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-    
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<span class="loading-spinner me-2"></span>Обработка...';
-    
-    try {
-        const formData = new FormData(form);
-        const response = await fetch('/api/bookings/', {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': getCSRFToken(),
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: formData
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            showToast('Бронирование создано! Ожидает оплаты.', 'success');
-            setTimeout(() => window.location.href = '/profile/', 1500);
-        } else {
-            showToast(data.detail || 'Ошибка при бронировании', 'danger');
-        }
-    } catch (error) {
-        showToast('Ошибка сети', 'danger');
-    } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
-    }
-}
-
-// Схема зала
-function initHallSchema() {
-    const seats = document.querySelectorAll('.seat:not(.booked)');
-    const selectedSeats = new Set();
-    const maxSeats = 8;
-    
-    seats.forEach(seat => {
-        seat.addEventListener('click', function() {
-            const seatId = this.dataset.seatId;
-            
-            if (this.classList.contains('selected')) {
-                this.classList.remove('selected');
-                selectedSeats.delete(seatId);
-            } else {
-                if (selectedSeats.size >= maxSeats) {
-                    showToast(`Максимум ${maxSeats} мест за раз`, 'warning');
-                    return;
-                }
-                this.classList.add('selected');
-                selectedSeats.add(seatId);
-            }
-            
-            updateSeatSelection(selectedSeats);
-        });
-    });
-}
-
-function updateSeatSelection(selectedSeats) {
-    const hiddenInput = document.querySelector('#id_seats');
-    if (hiddenInput) {
-        hiddenInput.value = Array.from(selectedSeats).join(',');
-    }
-    
-    const countEl = document.querySelector('#selected-count');
-    const totalEl = document.querySelector('#total-price');
-    if (countEl) countEl.textContent = selectedSeats.size;
-    
-    // Пересчет цены
-    let total = 0;
-    selectedSeats.forEach(seatId => {
-        const seat = document.querySelector(`.seat[data-seat-id="${seatId}"]`);
-        if (seat) {
-            total += parseFloat(seat.dataset.price || 0);
-        }
-    });
-    if (totalEl) totalEl.textContent = total.toFixed(2);
 }
 
 // Таймеры для бронирований

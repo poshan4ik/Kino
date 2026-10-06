@@ -34,11 +34,15 @@
             <div style="display:flex;flex-wrap:wrap;align-items:center;gap:1rem;margin-top:1rem;font-size:.875rem;color:var(--text-muted);">
                 <span style="display:flex;align-items:center;gap:.25rem;color:var(--gold);">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                    8.0
+                    {% if movie.average_rating %}{{ movie.average_rating|floatformat:1 }}{% else %}—{% endif %}
                 </span>
+                <span>{% if movie.reviews_count %}{{ movie.reviews_count }} {{ movie.reviews_count|pluralize:'отзыв,отзыва,отзывов' }}{% else %}Нет отзывов{% endif %}</span>
                 <span>{{ movie.genre.name }}</span>
                 <span>{{ movie.duration }} мин</span>
                 <span class="badge {% if movie.status == 'active' %}badge-green{% else %}badge-blue{% endif %}">{{ movie.get_status_display }}</span>
+                {% for label, cls in badges %}
+                <span class="badge {{ cls }}">{{ label }}</span>
+                {% endfor %}
             </div>
 
             <p style="margin-top:1.25rem;max-width:40rem;font-size:.9375rem;line-height:1.7;color:var(--text-muted);">
@@ -48,8 +52,14 @@
             <div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-top:1.5rem;">
                 {% if user.is_authenticated %}
                     <a href="#sessions" class="btn btn-primary" style="box-shadow:var(--soft-glow);">Выбрать сеанс</a>
+                    <button type="button" id="favBtn" class="btn btn-outline {% if is_favorite %}active{% endif %}"
+                            data-movie="{{ movie.id }}" data-fav="{% if is_favorite %}1{% else %}0{% endif %}"
+                            aria-pressed="{% if is_favorite %}true{% else %}false{% endif %}">
+                        <span aria-hidden="true">★</span>
+                        <span id="favBtnText">{% if is_favorite %}В избранном{% else %}В избранное{% endif %}</span>
+                    </button>
                 {% else %}
-                    <a href="{% url 'login' %}?next={% url 'movie_detail' movie.id %}" class="btn btn-primary">Войти для брони</a>
+                    <a href="{% url 'login' %}?next={% url 'movie_detail' movie.id %}" class="btn btn-outline">★ В избранное</a>
                 {% endif %}
                 {% if user.is_authenticated and user.is_manager %}
                     <a href="{% url 'admin:cinema_movie_change' movie.id %}" target="_blank" class="btn btn-outline">Редактировать</a>
@@ -106,6 +116,60 @@
         <div class="empty-state panel"><p>Сеансов пока нет</p></div>
         {% endif %}
     </section>
+
+    <!-- REVIEWS -->
+    <section id="reviews" style="margin-top:3rem;">
+        <div class="section-rule" style="margin-bottom:1.25rem;"></div>
+        <p class="eyebrow">Оценки зрителей</p>
+        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:clamp(2rem,4vw,2.5rem);color:var(--text);margin:0 0 1.5rem;">ОТЗЫВЫ</h2>
+
+        {% if user.is_authenticated %}
+        <form class="panel" id="reviewForm" style="padding:1.25rem;max-width:40rem;margin-bottom:2rem;" data-movie="{{ movie.id }}">
+            <p style="margin:0 0 .75rem;font-size:.875rem;color:var(--text-muted);">
+                Ваша оценка{% if user_review %} (вы уже оценили: {{ user_review.rating }}/5 — изменить){% endif %}
+            </p>
+            <div class="star-picker" style="display:flex;gap:.25rem;font-size:1.5rem;margin-bottom:.75rem;" id="starPicker" role="radiogroup" aria-label="Оценка от 1 до 5">
+                {% for i in "12345" %}
+                <button type="button" class="star-pick" data-value="{{ i }}" aria-label="{{ i }} из 5"
+                        style="background:none;border:none;cursor:pointer;color:var(--text-muted);padding:0;">★</button>
+                {% endfor %}
+            </div>
+            <textarea class="form-control" id="reviewComment" rows="3" placeholder="Впечатление о фильме (необязательно)"
+                      style="margin-bottom:.75rem;">{% if user_review %}{{ user_review.comment }}{% endif %}</textarea>
+            <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">
+                <button type="submit" class="btn btn-primary btn-sm" id="reviewSubmit">
+                    {% if user_review %}Обновить отзыв{% else %}Отправить отзыв{% endif %}
+                </button>
+                <span id="reviewMsg" style="font-size:.8125rem;color:var(--text-muted);"></span>
+            </div>
+        </form>
+        {% else %}
+        <div class="panel" style="padding:1.25rem;max-width:40rem;margin-bottom:2rem;">
+            <p style="margin:0;font-size:.875rem;color:var(--text-muted);">
+                <a href="{% url 'login' %}?next={% url 'movie_detail' movie.id %}" style="color:var(--gold);">Войдите</a>, чтобы оставить отзыв и оценку.
+            </p>
+        </div>
+        {% endif %}
+
+        <div style="display:flex;flex-direction:column;gap:1rem;">
+            {% for review in reviews %}
+            <article class="panel" style="padding:1.25rem;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap;">
+                    <b style="color:var(--text);">{{ review.user.username }}</b>
+                    <span style="display:flex;align-items:center;gap:.5rem;font-size:.875rem;color:var(--text-muted);">
+                        <span style="color:var(--gold);letter-spacing:.1em;" aria-label="Оценка {{ review.rating }} из 5">{% for i in "12345" %}{% if forloop.counter <= review.rating %}★{% else %}☆{% endif %}{% endfor %}</span>
+                        <span style="font-size:.75rem;">{{ review.created_at|date:"d.m.Y" }}</span>
+                    </span>
+                </div>
+                {% if review.comment %}
+                <p style="margin:.75rem 0 0;font-size:.9375rem;line-height:1.6;color:var(--text-muted);">{{ review.comment }}</p>
+                {% endif %}
+            </article>
+            {% empty %}
+            <div class="empty-state panel"><p>Отзывов пока нет — станьте первым</p></div>
+            {% endfor %}
+        </div>
+    </section>
 </main>
 
 {% endblock %}
@@ -117,6 +181,84 @@ function showDay(key,btn){
     document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active')});
     document.getElementById('day-'+key).style.display='block';
     btn.classList.add('active');
+}
+function getCookie(name){
+    var m=document.cookie.match('(^|;)\\s*'+name+'\\s*=\\s*([^;]+)');
+    return m?decodeURIComponent(m.pop()):'';
+}
+
+var favBtn=document.getElementById('favBtn');
+if(favBtn){
+    favBtn.addEventListener('click',function(){
+        var isFav=favBtn.dataset.fav==='1';
+        fetch('/api/favorites/'+favBtn.dataset.movie+'/',{
+            method:isFav?'DELETE':'POST',
+            headers:{'X-CSRFToken':getCookie('csrftoken'),'X-Requested-With':'XMLHttpRequest'},
+        }).then(function(r){
+            if(!r.ok) throw new Error();
+            favBtn.dataset.fav=isFav?'0':'1';
+            favBtn.classList.toggle('active',!isFav);
+            favBtn.setAttribute('aria-pressed',String(!isFav));
+            document.getElementById('favBtnText').textContent=isFav?'В избранное':'В избранном';
+        }).catch(function(){});
+    });
+}
+
+var starPicker=document.getElementById('starPicker');
+var selectedRating={% if user_review %}{{ user_review.rating }}{% else %}0{% endif %};
+function paintStars(value){
+    starPicker.querySelectorAll('.star-pick').forEach(function(b){
+        b.style.color=Number(b.dataset.value)<=value?'var(--gold)':'var(--text-muted)';
+    });
+}
+if(starPicker){
+    paintStars(selectedRating);
+    starPicker.querySelectorAll('.star-pick').forEach(function(b){
+        b.addEventListener('click',function(){
+            selectedRating=Number(b.dataset.value);
+            paintStars(selectedRating);
+        });
+    });
+}
+var reviewForm=document.getElementById('reviewForm');
+if(reviewForm){
+    reviewForm.addEventListener('submit',function(e){
+        e.preventDefault();
+        var msg=document.getElementById('reviewMsg');
+        if(!selectedRating){
+            msg.textContent='Выберите оценку от 1 до 5';
+            msg.style.color='var(--destructive)';
+            return;
+        }
+        msg.textContent=''; msg.style.color='var(--text-muted)';
+        document.getElementById('reviewSubmit').disabled=true;
+        fetch('/api/reviews/',{
+            method:'POST',
+            headers:{
+                'Content-Type':'application/json',
+                'X-CSRFToken':getCookie('csrftoken'),
+                'X-Requested-With':'XMLHttpRequest',
+            },
+            body:JSON.stringify({
+                movie:Number(reviewForm.dataset.movie),
+                rating:selectedRating,
+                comment:document.getElementById('reviewComment').value,
+            }),
+        }).then(function(r){
+            if(r.status===403||r.status===401){
+                window.location='{% url "login" %}?next={% url "movie_detail" movie.id %}';
+                return null;
+            }
+            if(!r.ok) throw new Error();
+            return r.json();
+        }).then(function(data){
+            if(data) location.reload();
+        }).catch(function(){
+            document.getElementById('reviewSubmit').disabled=false;
+            msg.textContent='Не удалось отправить отзыв';
+            msg.style.color='var(--destructive)';
+        });
+    });
 }
 </script>
 {% endblock %}

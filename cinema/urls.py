@@ -2,7 +2,9 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     UserViewSet, GenreViewSet, MovieViewSet, HallViewSet, SeatViewSet,
-    SessionViewSet, BookingViewSet, TicketViewSet, PaymentViewSet, DashboardViewSet
+    SessionViewSet, BookingViewSet, TicketViewSet, PaymentViewSet, DashboardViewSet,
+    FavoriteListAPIView, FavoriteToggleAPIView, MovieReviewsAPIView,
+    ReviewListCreateAPIView
 )
 
 router = DefaultRouter()
@@ -18,5 +20,9 @@ router.register(r'payments', PaymentViewSet, basename='payment')
 router.register(r'dashboard', DashboardViewSet, basename='dashboard')
 
 urlpatterns = [
-    path('api/', include(router.urls)),
+    path('favorites/', FavoriteListAPIView.as_view()),
+    path('favorites/<int:movie_id>/', FavoriteToggleAPIView.as_view()),
+    path('reviews/', ReviewListCreateAPIView.as_view()),
+    path('movies/<int:movie_id>/reviews/', MovieReviewsAPIView.as_view()),
+    path('', include(router.urls)),
 ]
