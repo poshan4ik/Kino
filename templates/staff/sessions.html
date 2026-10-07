@@ -1,0 +1,116 @@
+{% extends 'staff_base.html' %}
+{% load static %}
+{% block title %}Сеансы — Управление{% endblock %}
+
+{% block staff_content %}
+<div class="staff-topline">
+    <div>
+        <p class="eyebrow">Расписание</p>
+        <h1 class="staff-title">СЕАНСЫ</h1>
+        <p class="staff-sub">сеансы с {{ today|default:"сегодняшней" }} даты и позже · {{ sessions|length }} записей</p>
+    </div>
+    <button type="button" class="btn btn-primary btn-sm" data-modal-open="#sessionModal" data-title="Новый сеанс">
+        + Добавить сеанс
+    </button>
+</div>
+
+<div class="staff-toolbar">
+    <input type="search" class="form-control" placeholder="Поиск по фильму…" data-table-search="#sessionsTable" aria-label="Поиск по фильму">
+    <span class="spacer"></span>
+    <a href="{% url 'staff_movies' %}" class="btn btn-outline btn-sm">Фильмы</a>
+</div>
+
+<section class="panel" style="overflow:hidden;">
+    <div class="table-wrap" style="border:none;">
+        <table class="table" id="sessionsTable">
+            <thead>
+                <tr><th>Дата</th><th>Время</th><th>Фильм</th><th>Зал</th><th>Цены, ₽</th><th>Статус</th><th></th></tr>
+            </thead>
+            <tbody>
+                {% for s in sessions %}
+                <tr>
+                    <td><b>{{ s.date|date:"d.m.Y" }}</b></td>
+                    <td><b>{{ s.time|time:"H:i" }}</b></td>
+                    <td>{{ s.movie.title }}</td>
+                    <td>Зал {{ s.hall.number }} <span class="text-xs text-muted">{{ s.hall.get_type_display }}</span></td>
+                    <td class="text-xs">
+                        <span class="text-muted">С:</span> {{ s.price_standard|floatformat:0 }}
+                        · <span class="text-muted">К:</span> {{ s.price_comfort|floatformat:0 }}
+                        · <span class="text-muted">VIP:</span> {{ s.price_vip|floatformat:0 }}
+                    </td>
+                    <td>
+                        <button type="button" class="badge {% if s.is_active %}badge-green{% else %}badge-status-cancelled{% endif %}"
+                                style="cursor:pointer;border:1px solid;"
+                                data-toggle-field="is_active" data-value="{{ s.is_active|yesno:'true,false' }}"
+                                data-url="/api/sessions/{{ s.id }}/"
+                                title="Нажмите, чтобы переключить">
+                            {% if s.is_active %}Активен{% else %}Отключён{% endif %}
+                        </button>
+                    </td>
+                    <td>
+                        <div class="row-actions">
+                            <button type="button" class="btn btn-outline"
+                                    data-modal-open="#sessionModal" data-fill
+                                    data-url="/api/sessions/{{ s.id }}/" data-method="PUT"
+                                    data-title="Редактировать сеанс"
+                                    data-field-movie="{{ s.movie_id }}"
+                                    data-field-hall="{{ s.hall_id }}"
+                                    data-field-date="{{ s.date|date:'Y-m-d' }}"
+                                    data-field-time="{{ s.time|time:'H:i' }}"
+                                    data-field-price_standard="{{ s.price_standard }}"
+                                    data-field-price_comfort="{{ s.price_comfort }}"
+                                    data-field-price_vip="{{ s.price_vip }}"
+                                    data-field-is_active="{{ s.is_active|yesno:'true,false' }}">Ред.</button>
+                            <button type="button" class="btn btn-outline"
+                                    data-api-delete data-url="/api/sessions/{{ s.id }}/"
+                                    data-confirm="Удалить сеанс {{ s.date|date:'d.m' }} {{ s.time|time:'H:i' }}?">✕</button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7"><div class="empty-state" style="border:none;"><h3>Сеансов нет</h3><p>Создайте первый сеанс для фильма и зала.</p></div></td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<div class="modal-overlay" id="sessionModal">
+    <div class="modal-card form-card">
+        <h3 data-form-title>Новый сеанс</h3>
+        <form class="staff-form" data-crud data-url="/api/sessions/" data-method="POST" data-success="Сеанс сохранён">
+            <div class="grid-2">
+                <label class="field"><span class="field-label">Фильм *</span>
+                    <select class="form-control" name="movie" required>
+                        {% for m in movies %}<option value="{{ m.id }}">{{ m.title }}</option>{% endfor %}
+                    </select></label>
+                <label class="field"><span class="field-label">Зал *</span>
+                    <select class="form-control" name="hall" required>
+                        {% for h in halls %}<option value="{{ h.id }}">Зал {{ h.number }} · {{ h.get_type_display }}</option>{% endfor %}
+                    </select></label>
+            </div>
+            <div class="grid-2">
+                <label class="field"><span class="field-label">Дата *</span>
+                    <input type="date" class="form-control" name="date" required></label>
+                <label class="field"><span class="field-label">Время *</span>
+                    <input type="time" class="form-control" name="time" required></label>
+            </div>
+            <div class="grid-2" style="grid-template-columns:1fr 1fr 1fr;">
+                <label class="field"><span class="field-label">Стандарт, ₽</span>
+                    <input type="number" class="form-control" name="price_standard" min="0" step="1" value="300"></label>
+                <label class="field"><span class="field-label">Комфорт, ₽</span>
+                    <input type="number" class="form-control" name="price_comfort" min="0" step="1" value="450"></label>
+                <label class="field"><span class="field-label">VIP, ₽</span>
+                    <input type="number" class="form-control" name="price_vip" min="0" step="1" value="700"></label>
+            </div>
+            <label class="flex items-center gap-2 text-sm" style="cursor:pointer;">
+                <input type="checkbox" name="is_active" checked> Активен (виден в афише)
+            </label>
+            <div class="form-actions">
+                <button type="button" class="btn btn-outline" data-modal-close>Отмена</button>
+                <button type="submit" class="btn btn-primary">Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,99 @@
+{% extends 'staff_base.html' %}
+{% load static %}
+{% block title %}Залы — Управление{% endblock %}
+
+{% block staff_content %}
+<div class="staff-topline">
+    <div>
+        <p class="eyebrow">Справочники</p>
+        <h1 class="staff-title">ЗАЛЫ</h1>
+        <p class="staff-sub">{{ halls|length }} залов · схемы мест и вместимость</p>
+    </div>
+    <button type="button" class="btn btn-primary btn-sm" data-modal-open="#hallModal" data-title="Новый зал">
+        + Добавить зал
+    </button>
+</div>
+
+<section class="panel" style="overflow:hidden;">
+    <div class="table-wrap" style="border:none;">
+        <table class="table" id="hallsTable">
+            <thead>
+                <tr><th>№</th><th>Тип</th><th>Мест</th><th>Описание</th><th>Сеансов</th><th></th></tr>
+            </thead>
+            <tbody>
+                {% for h in halls %}
+                <tr>
+                    <td><b>Зал {{ h.number }}</b></td>
+                    <td><span class="badge">{{ h.get_type_display }}</span></td>
+                    <td>
+                        {% if h.seats_total %}
+                        <b>{{ h.seats_total }}</b>
+                        {% else %}
+                        <span class="badge badge-gold">нет мест</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-xs text-muted">{{ h.description|default:"—" }}</td>
+                    <td>{{ h.sessions_count }}</td>
+                    <td>
+                        <div class="row-actions">
+                            {% if not h.seats_total %}
+                            <button type="button" class="btn btn-primary"
+                                    data-api-action data-url="/api/halls/{{ h.id }}/generate_seats/"
+                                    data-confirm="Сгенерировать места для зала {{ h.number }}?"
+                                    data-success="Места сгенерированы">Сгенерировать места</button>
+                            {% else %}
+                            <button type="button" class="btn btn-outline"
+                                    data-api-action data-url="/api/halls/{{ h.id }}/generate_seats/"
+                                    data-confirm="Пересоздать схему мест зала {{ h.number }}? Брони на старых местах могут стать недействительными."
+                                    data-success="Места пересозданы">Пересоздать места</button>
+                            {% endif %}
+                            <button type="button" class="btn btn-outline"
+                                    data-modal-open="#hallModal" data-fill
+                                    data-url="/api/halls/{{ h.id }}/" data-method="PUT"
+                                    data-title="Редактировать зал"
+                                    data-field-number="{{ h.number }}"
+                                    data-field-type="{{ h.type }}"
+                                    data-field-capacity="{{ h.capacity }}"
+                                    data-field-description="{{ h.description|escape }}">Ред.</button>
+                            <button type="button" class="btn btn-outline"
+                                    data-api-delete data-url="/api/halls/{{ h.id }}/"
+                                    data-confirm="Удалить зал {{ h.number }}?">✕</button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6"><div class="empty-state" style="border:none;"><h3>Залов пока нет</h3><p>Создайте зал и сгенерируйте для него схему мест.</p></div></td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<div class="modal-overlay" id="hallModal">
+    <div class="modal-card form-card">
+        <h3 data-form-title>Новый зал</h3>
+        <form class="staff-form" data-crud data-url="/api/halls/" data-method="POST" data-success="Зал сохранён">
+            <div class="grid-2">
+                <label class="field"><span class="field-label">Номер зала *</span>
+                    <input type="number" class="form-control" name="number" min="1" required></label>
+                <label class="field"><span class="field-label">Тип *</span>
+                    <select class="form-control" name="type">
+                        <option value="2D">2D</option>
+                        <option value="3D">3D</option>
+                        <option value="VIP">VIP</option>
+                        <option value="IMAX">IMAX</option>
+                    </select></label>
+            </div>
+            <label class="field"><span class="field-label">Вместимость (мест) *</span>
+                <input type="number" class="form-control" name="capacity" min="1" required placeholder="Например, 100"></label>
+            <label class="field"><span class="field-label">Описание</span>
+                <textarea class="form-control" name="description" rows="2" placeholder="Особенности зала…"></textarea></label>
+            <p class="help">Схему мест можно сгенерировать сразу после создания — кнопкой в таблице.</p>
+            <div class="form-actions">
+                <button type="button" class="btn btn-outline" data-modal-close>Отмена</button>
+                <button type="submit" class="btn btn-primary">Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -46,7 +46,7 @@ class MovieSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Movie
-        fields = ['id', 'title', 'genre', 'genre_name', 'duration', 'age_rating', 'description', 'poster', 'poster_url', 'status', 'sessions_count', 'rating', 'reviews_count', 'created_at', 'updated_at']
+        fields = ['id', 'title', 'genre', 'genre_name', 'duration', 'age_rating', 'description', 'poster', 'poster_url', 'trailer_url', 'status', 'sessions_count', 'rating', 'reviews_count', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
     
     def get_sessions_count(self, obj):
@@ -85,7 +85,7 @@ class MovieListSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Movie
-        fields = ['id', 'title', 'genre_name', 'duration', 'age_rating', 'poster_url', 'status', 'rating', 'reviews_count', 'next_sessions']
+        fields = ['id', 'title', 'genre_name', 'duration', 'age_rating', 'poster_url', 'trailer_url', 'status', 'rating', 'reviews_count', 'next_sessions']
     
     def get_poster_url(self, obj):
         if obj.poster:

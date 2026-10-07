@@ -3,60 +3,92 @@
 {% block title %}Мои билеты — Аврора{% endblock %}
 
 {% block content %}
-<main class="page-shell" style="padding:2.5rem 0 3.5rem;">
-    <div class="section-rule" style="margin-bottom:1.25rem;"></div>
+<main class="page-shell" style="padding-top:2.5rem;padding-bottom:4rem;">
+    <div class="section-rule" style="margin-bottom:1rem;"></div>
     <p class="eyebrow">Личный кабинет</p>
-    <h1 style="font-family:'Bebas Neue',sans-serif;font-size:clamp(2.5rem,5vw,3.5rem);line-height:1;color:var(--text);margin:0;">МОЙ ПРОФИЛЬ</h1>
-    <p style="margin:.5rem 0 0;font-size:.875rem;color:var(--text-muted);">{{ user.get_full_name|default:user.username }} · {{ user.email|default:"" }}</p>
+    <div class="flex items-center gap-4 flex-wrap profile-head">
+        <div class="avatar-ring">
+            <div class="avatar">
+                {{ user.first_name|default:user.username|slice:":1"|upper }}
+            </div>
+        </div>
+        <div>
+            <h1 style="font-family:'Bebas Neue',sans-serif;font-size:clamp(2.2rem,5vw,3rem);line-height:1;color:var(--text);margin:0;">{{ user.get_full_name|default:user.username }}</h1>
+            <p class="text-sm text-muted" style="margin:.35rem 0 0;">
+                {{ user.email|default:"—" }}
+                {% if user.role != 'client' %}<span class="role-tag" style="margin-left:.5rem;">{{ user.get_role_display }}</span>{% endif %}
+            </p>
+        </div>
+    </div>
 
-    <div style="display:grid;gap:2rem;grid-template-columns:230px 1fr;align-items:start;margin-top:2rem;" class="profile-grid">
-        <!-- Sidebar -->
-        <aside style="display:flex;gap:.5rem;overflow-x:auto;flex-wrap:wrap;" id="pTabs">
-            <button class="tab-btn active" onclick="stab('t',this)" style="justify-content:flex-start;">
-                🎫 Активные билеты
-            </button>
-            <button class="tab-btn" onclick="stab('h',this)" style="justify-content:flex-start;">
-                📖 История
-            </button>
-            <button class="tab-btn" onclick="stab('p',this)" style="justify-content:flex-start;">
-                💳 Платежи
-            </button>
-            <button class="tab-btn" onclick="stab('f',this)" style="justify-content:flex-start;">
-                ★ Избранное
-            </button>
-            <button class="tab-btn" onclick="stab('s',this)" style="justify-content:flex-start;">
-                ⚙ Настройки
-            </button>
+    <div class="profile-grid">
+        <!-- Sidebar tabs -->
+        <aside class="profile-nav" id="pTabs" aria-label="Разделы профиля">
+            <button type="button" class="tab-btn active" onclick="stab('t',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1a2 2 0 0 0 0 4v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1a2 2 0 0 0 0-4z"/><path d="M13 7v2m0 3v2m0 3v2"/></svg> Активные билеты</button>
+            <button type="button" class="tab-btn" onclick="stab('h',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> История</button>
+            <button type="button" class="tab-btn" onclick="stab('p',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5.5" width="19" height="13" rx="2.5"/><path d="M2.5 10h19"/><path d="M6 15h4"/></svg> Платежи</button>
+            <button type="button" class="tab-btn" onclick="stab('f',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3.6 2.5 5.1 5.6.8-4 4 .9 5.6-5-2.7-5 2.7.9-5.6-4-4 5.6-.8z"/></svg> Избранное</button>
+            <button type="button" class="tab-btn" onclick="stab('s',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.64 8.7a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1z"/></svg> Настройки</button>
         </aside>
 
         <section>
-            <!-- Active Tickets -->
+            <!-- Active tickets -->
             <div class="pTab" id="tab-t">
                 <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--text);margin:0 0 1.25rem;">АКТИВНЫЕ БИЛЕТЫ</h2>
-                <div style="display:flex;flex-direction:column;gap:1.25rem;">
+
+                <div class="flex flex-col gap-3" style="margin-bottom:1.5rem;">
+                    {% for b in bookings %}
+                        {% if b.status == 'pending_payment' %}
+                        <article class="panel p-5" style="border-color:var(--gold-45);">
+                            <div class="flex items-center justify-between gap-3 flex-wrap">
+                                <div>
+                                    <span class="badge badge-gold">Ожидает оплаты</span>
+                                    <h3 style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;color:var(--text);margin:.7rem 0 0;">{{ b.session.movie.title }}</h3>
+                                    <p class="text-sm text-muted" style="margin:.25rem 0 0;">
+                                        {{ b.session.date|date:"d.m.Y" }}, {{ b.session.time|time:"H:i" }} · Зал {{ b.session.hall.number }} · Ряд {{ b.seat.row }}, место {{ b.seat.number }}
+                                    </p>
+                                </div>
+                                <div class="flex items-center gap-3 flex-wrap">
+                                    {% if b.expires_at %}
+                                    <span class="countdown" data-countdown="{{ b.expires_at|date:'c' }}"><span class="cd-dot"></span><span>—</span></span>
+                                    {% endif %}
+                                    <button type="button" class="btn btn-primary btn-sm" data-pay-booking="{{ b.id }}">Оплатить онлайн</button>
+                                </div>
+                            </div>
+                        </article>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+
+                <div class="flex flex-col gap-4">
                     {% for b in bookings %}
                         {% if b.ticket and b.status == 'paid' %}
                         <article class="ticket-stub">
                             <div class="ticket-info">
-                                <span class="badge badge-green">Активен</span>
-                                <h3 style="font-family:'Bebas Neue',sans-serif;font-size:1.75rem;color:var(--text);margin:1rem 0 0;">{{ b.session.movie.title }}</h3>
-                                <p style="margin:.25rem 0 0;color:var(--text-muted);">Сегодня, {{ b.session.time|time:"H:i" }} · Зал {{ b.session.hall.number }}</p>
-                                <div style="display:flex;gap:1.5rem;margin-top:1.25rem;font-size:.875rem;">
-                                    <span><b style="display:block;color:var(--text-muted);">Ряд</b>{{ b.seat.row }}</span>
-                                    <span><b style="display:block;color:var(--text-muted);">Места</b>{{ b.seat.number }}</span>
-                                    <span><b style="display:block;color:var(--text-muted);">Сумма</b>{{ b.ticket.price }} ₽</span>
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="badge badge-green">Активен</span>
+                                    <span class="badge badge-status-{{ b.status }}">{{ b.get_status_display }}</span>
+                                </div>
+                                <h3 style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--text);margin:.9rem 0 0;">{{ b.session.movie.title }}</h3>
+                                <p class="text-sm text-muted" style="margin:.3rem 0 0;">
+                                    {{ b.session.date|date:"d.m.Y" }}, {{ b.session.time|time:"H:i" }} · Зал {{ b.session.hall.number }} · {{ b.session.hall.get_type_display }}
+                                </p>
+                                <div class="ticket-seats">
+                                    <span><b>Ряд</b>{{ b.seat.row }}</span>
+                                    <span><b>Место</b>{{ b.seat.number }}</span>
+                                    <span><b>Сумма</b>{{ b.ticket.price }} ₽</span>
+                                    <span><b>Номер</b>AUR-{{ b.id|stringformat:"06d" }}</span>
                                 </div>
                             </div>
                             <div class="ticket-code">
-                                <span style="color:var(--primary);font-size:1.125rem;">🎫</span>
-                                <div class="barcode" aria-label="Штрихкод билета"></div>
                                 <div class="ticket-qr" data-qr="{{ b.ticket.barcode }}" aria-label="QR-код билета"></div>
-                                <span style="font-size:.75rem;color:var(--text-muted);">{{ b.ticket.barcode }}</span>
+                                <div class="barcode" aria-label="Штрихкод билета"></div>
+                                <span class="text-xs text-muted">{{ b.ticket.barcode }}</span>
                             </div>
                         </article>
                         {% endif %}
                     {% empty %}
-                    <div class="empty-state panel"><p>Активных билетов нет</p></div>
+                    <div class="empty-state"><h3>Активных билетов нет</h3><p>Выберите фильм в афише — билет появится здесь.</p><a href="{% url 'home' %}#afilms" class="btn btn-primary btn-sm" style="margin-top:.75rem;">К афише</a></div>
                     {% endfor %}
                 </div>
             </div>
@@ -64,24 +96,26 @@
             <!-- History -->
             <div class="pTab" id="tab-h" style="display:none;">
                 <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--text);margin:0 0 1.25rem;">ИСТОРИЯ ПОСЕЩЕНИЙ</h2>
-                <div style="display:flex;flex-direction:column;gap:1.25rem;">
+                <div class="flex flex-col gap-3">
                     {% for b in bookings %}
                         {% if b.status in 'used,cancelled,expired' %}
                         <article class="ticket-stub past">
                             <div class="ticket-info">
-                                <span class="badge">{{ b.get_status_display }}</span>
-                                <h3 style="font-family:'Bebas Neue',sans-serif;font-size:1.75rem;color:var(--text);margin:1rem 0 0;">{{ b.session.movie.title }}</h3>
-                                <p style="margin:.25rem 0 0;color:var(--text-muted);">{{ b.session.date|date:"d.m.Y" }}, {{ b.session.time|time:"H:i" }} · Зал {{ b.session.hall.number }}</p>
-                                <div style="display:flex;gap:1.5rem;margin-top:1.25rem;font-size:.875rem;">
-                                    <span><b style="display:block;color:var(--text-muted);">Ряд</b>{{ b.seat.row }}</span>
-                                    <span><b style="display:block;color:var(--text-muted);">Место</b>{{ b.seat.number }}</span>
+                                <span class="badge badge-status-{{ b.status }}">{{ b.get_status_display }}</span>
+                                <h3 style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;color:var(--text);margin:.8rem 0 0;">{{ b.session.movie.title }}</h3>
+                                <p class="text-sm text-muted" style="margin:.3rem 0 0;">
+                                    {{ b.session.date|date:"d.m.Y" }}, {{ b.session.time|time:"H:i" }} · Зал {{ b.session.hall.number }}
+                                </p>
+                                <div class="ticket-seats">
+                                    <span><b>Ряд</b>{{ b.seat.row }}</span>
+                                    <span><b>Место</b>{{ b.seat.number }}</span>
                                 </div>
                             </div>
-                            <div class="ticket-code"><div class="barcode" style="opacity:.3;"></div></div>
+                            <div class="ticket-code"><div class="barcode" style="opacity:.25;"></div></div>
                         </article>
                         {% endif %}
                     {% empty %}
-                    <div class="empty-state panel"><p>История пока пуста</p></div>
+                    <div class="empty-state"><h3>История пока пуста</h3><p>Здесь появятся прошедшие визиты.</p></div>
                     {% endfor %}
                 </div>
             </div>
@@ -89,21 +123,21 @@
             <!-- Favorites -->
             <div class="pTab" id="tab-f" style="display:none;">
                 <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--text);margin:0 0 1.25rem;">ИЗБРАННОЕ</h2>
-                <div style="display:flex;flex-direction:column;gap:1rem;">
+                <div class="flex flex-col gap-3">
                     {% for f in favorites %}
-                    <article class="panel" style="padding:1.25rem;display:flex;gap:1rem;align-items:center;flex-wrap:wrap;">
-                        <div style="width:56px;flex-shrink:0;border-radius:8px;overflow:hidden;">
+                    <article class="panel p-4 flex items-center gap-4 flex-wrap">
+                        <div style="width:56px;flex-shrink:0;border-radius:10px;overflow:hidden;">
                             {% if f.movie.poster %}
                             <img src="{{ f.movie.poster.url }}" alt="{{ f.movie.title }}" width="800" height="1200" style="width:100%;aspect-ratio:2/3;object-fit:cover;display:block;">
                             {% else %}
-                            <div style="width:100%;aspect-ratio:2/3;background:var(--panel);"></div>
+                            <div style="width:100%;aspect-ratio:2/3;background:var(--surface-raised);"></div>
                             {% endif %}
                         </div>
                         <div style="flex:1;min-width:160px;">
-                            <h3 style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:var(--text);margin:0;">
-                                <a href="{% url 'movie_detail' f.movie.id %}" style="color:inherit;text-decoration:none;">{{ f.movie.title }}</a>
+                            <h3 style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:var(--text);margin:0;">
+                                <a href="{% url 'film' f.movie.id %}" style="color:inherit;">{{ f.movie.title }}</a>
                             </h3>
-                            <p style="margin:.25rem 0 0;font-size:.8125rem;color:var(--text-muted);">
+                            <p class="text-xs text-muted" style="margin:.25rem 0 0;">
                                 {{ f.movie.genre.name }} · {{ f.movie.age_rating }}+
                                 {% if f.average_rating %} · <span style="color:var(--gold);">★ {{ f.average_rating|floatformat:1 }}</span>{% endif %}
                             </p>
@@ -111,7 +145,7 @@
                         <button type="button" class="btn btn-outline btn-sm fav-remove" data-movie="{{ f.movie.id }}">Убрать</button>
                     </article>
                     {% empty %}
-                    <div class="empty-state panel"><p>В избранном пока ничего нет — добавляйте фильмы кнопкой ★</p></div>
+                    <div class="empty-state"><h3>В избранном пусто</h3><p>Добавляйте фильмы кнопкой ★ в афише.</p></div>
                     {% endfor %}
                 </div>
             </div>
@@ -119,19 +153,19 @@
             <!-- Payments -->
             <div class="pTab" id="tab-p" style="display:none;">
                 <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--text);margin:0 0 1.25rem;">ПЛАТЕЖИ</h2>
-                <div class="panel" style="overflow:hidden;">
+                <div class="table-wrap">
                     <table class="table">
                         <thead><tr><th>Дата</th><th>Заказ</th><th>Способ</th><th style="text-align:right;">Сумма</th></tr></thead>
                         <tbody>
                             {% for p in payments %}
                             <tr>
-                                <td>{{ p.created_at|date:"d.m.Y" }}</td>
-                                <td>{{ p.ticket.barcode|truncatechars:20 }}</td>
+                                <td>{{ p.created_at|date:"d.m.Y H:i" }}</td>
+                                <td class="text-xs">{{ p.ticket.barcode|truncatechars:22 }}</td>
                                 <td>{{ p.get_method_display }}</td>
-                                <td style="text-align:right;">{{ p.amount }} ₽</td>
+                                <td style="text-align:right;"><b>{{ p.amount }} ₽</b></td>
                             </tr>
                             {% empty %}
-                            <tr><td colspan="4" style="text-align:center;color:var(--text-muted);">Платежей нет</td></tr>
+                            <tr><td colspan="4" class="text-center text-muted">Платежей пока нет</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -141,58 +175,88 @@
             <!-- Settings -->
             <div class="pTab" id="tab-s" style="display:none;">
                 <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--text);margin:0 0 1.25rem;">НАСТРОЙКИ</h2>
-                <form class="panel" style="display:grid;gap:1rem;max-width:32rem;padding:1.25rem;grid-template-columns:1fr 1fr;">
-                    <label style="font-size:.875rem;">Имя<input type="text" class="form-control mt-2" value="{{ user.first_name }}" disabled></label>
-                    <label style="font-size:.875rem;">Фамилия<input type="text" class="form-control mt-2" value="{{ user.last_name }}" disabled></label>
-                    <label style="font-size:.875rem;grid-column:1/-1;">Email<input type="email" class="form-control mt-2" value="{{ user.email }}" disabled></label>
-                    <label style="font-size:.875rem;grid-column:1/-1;">Роль<input type="text" class="form-control mt-2" value="{{ user.get_role_display }}" disabled></label>
-                    <button type="button" class="btn btn-primary" style="grid-column:1/-1;width:fit-content;border-radius:999px;">Сохранить изменения</button>
+                <form class="panel p-5" id="profileForm" style="display:grid;gap:1rem;max-width:34rem;grid-template-columns:1fr 1fr;">
+                    <label class="field"><span class="field-label">Имя</span>
+                        <input type="text" class="form-control" name="first_name" value="{{ user.first_name }}"></label>
+                    <label class="field"><span class="field-label">Фамилия</span>
+                        <input type="text" class="form-control" name="last_name" value="{{ user.last_name }}"></label>
+                    <label class="field" style="grid-column:1/-1;"><span class="field-label">Email</span>
+                        <input type="email" class="form-control" name="email" value="{{ user.email }}"></label>
+                    <label class="field" style="grid-column:1/-1;"><span class="field-label">Телефон</span>
+                        <input type="text" class="form-control" name="phone" value="{{ user.phone|default:'' }}"></label>
+                    <label class="field" style="grid-column:1/-1;"><span class="field-label">Роль</span>
+                        <input type="text" class="form-control" value="{{ user.get_role_display }}" disabled></label>
+                    <div style="grid-column:1/-1;" class="flex items-center gap-3">
+                        <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+                        <span class="text-xs text-muted" id="profileMsg"></span>
+                    </div>
                 </form>
             </div>
         </section>
     </div>
 </main>
-
-<style>
-@media(max-width:768px){.profile-grid{grid-template-columns:1fr!important}#pTabs{flex-direction:row!important}}
-</style>
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
-function stab(id,btn){
-    document.querySelectorAll('.pTab').forEach(function(e){e.style.display='none'});
-    document.querySelectorAll('#pTabs .tab-btn').forEach(function(b){b.classList.remove('active')});
-    document.getElementById('tab-'+id).style.display='block';
+function stab(id, btn) {
+    document.querySelectorAll('.pTab').forEach(function (e) { e.style.display = 'none'; });
+    document.querySelectorAll('#pTabs .tab-btn').forEach(function (b) { b.classList.remove('active'); });
+    document.getElementById('tab-' + id).style.display = 'block';
     btn.classList.add('active');
 }
-function getCookie(name){
-    var m=document.cookie.match('(^|;)\\s*'+name+'\\s*=\\s*([^;]+)');
-    return m?decodeURIComponent(m.pop()):'';
-}
-document.querySelectorAll('.fav-remove').forEach(function(btn){
-    btn.addEventListener('click',function(){
-        fetch('/api/favorites/'+btn.dataset.movie+'/',{
-            method:'DELETE',
-            headers:{'X-CSRFToken':getCookie('csrftoken'),'X-Requested-With':'XMLHttpRequest'},
-        }).then(function(r){
-            if(!r.ok) throw new Error();
-            location.reload();
-        }).catch(function(){});
+
+document.querySelectorAll('.fav-remove').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+        Aurora.api('DELETE', '/api/favorites/' + btn.dataset.movie + '/')
+            .then(function () { location.reload(); })
+            .catch(function (e) { Aurora.toast(e.message, 'error'); });
     });
 });
-if(typeof QRCode!=='undefined'){
-    document.querySelectorAll('.ticket-qr[data-qr]').forEach(function(el){
-        new QRCode(el,{
-            text:el.dataset.qr,
-            width:96,
-            height:96,
-            colorDark:'#000000',
-            colorLight:'#ffffff',
-            correctLevel:QRCode.CorrectLevel.M,
+
+document.querySelectorAll('[data-pay-booking]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+        btn.disabled = true;
+        btn.textContent = 'Оплата…';
+        Aurora.api('POST', '/api/bookings/pay/', {
+            booking_ids: [Number(btn.dataset.payBooking)],
+            method: 'online',
+        })
+            .then(function () {
+                Aurora.toast('Оплата прошла успешно — билет доступен', 'success');
+                setTimeout(function () { location.reload(); }, 800);
+            })
+            .catch(function (e) {
+                Aurora.toast(e.message, 'error');
+                btn.disabled = false;
+                btn.textContent = 'Оплатить онлайн';
+            });
+    });
+});
+
+var profileForm = document.getElementById('profileForm');
+if (profileForm) {
+    profileForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var data = {};
+        ['first_name', 'last_name', 'email', 'phone'].forEach(function (name) {
+            data[name] = profileForm.elements[name].value;
         });
+        var msg = document.getElementById('profileMsg');
+        Aurora.api('PATCH', '/api/users/update_me/', data)
+            .then(function () {
+                msg.textContent = 'Сохранено';
+                msg.style.color = 'var(--success)';
+                Aurora.toast('Профиль обновлён', 'success');
+            })
+            .catch(function (err) {
+                msg.textContent = err.message;
+                msg.style.color = 'var(--accent-hover)';
+            });
     });
 }
+
+Aurora.renderQR(document);
 </script>
 {% endblock %}

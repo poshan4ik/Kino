@@ -42,6 +42,8 @@ class UserViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ['create']:
             return [AllowAny()]
+        if self.action in ['me', 'update_me']:
+            return [IsAuthenticated()]
         if self.action in ['list', 'retrieve']:
             return [IsAuthenticated()]
         return [IsAdminOrManager()]
@@ -91,10 +93,10 @@ class MovieViewSet(viewsets.ModelViewSet):
         return MovieSerializer
     
     def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
+        if self.action in ['list', 'retrieve', 'sessions']:
             return [PublicReadOnly()]
         return [IsAdminOrManager()]
-    
+
     @action(detail=True, methods=['get'], permission_classes=[PublicReadOnly])
     def sessions(self, request, pk=None):
         movie = self.get_object()
@@ -149,7 +151,7 @@ class SessionViewSet(viewsets.ModelViewSet):
         return SessionSerializer
     
     def get_permissions(self):
-        if self.action in ['list', 'retrieve', 'by_date']:
+        if self.action in ['list', 'retrieve', 'by_date', 'seats']:
             return [PublicReadOnly()]
         return [IsAdminOrManager()]
     
@@ -194,6 +196,30 @@ class SessionViewSet(viewsets.ModelViewSet):
         return Response(layout)
 
 
+def issue_ticket(booking, method, actor):
+    """Создаёт Ticket + Completed Payment и пишет аудит.
+
+    Статус Booking → paid и Ticket → active ставит сигнал payment_post_save.
+    """
+    ticket = Ticket.objects.create(
+        booking=booking,
+        price=booking.session.get_price_for_category(booking.seat.category),
+        barcode=str(uuid.uuid4()).replace('-', '').upper()[:20],
+        status='active',
+    )
+    Payment.objects.create(
+        ticket=ticket,
+        amount=ticket.price,
+        method=method,
+        status='completed',
+        completed_at=timezone.now(),
+    )
+    log_audit(actor, 'confirm_payment',
+              f'Оплата брони #{booking.id} ({booking.session.movie.title}), '
+              f'билет {ticket.barcode}, {ticket.price} руб.')
+    return ticket
+
+
 class BookingViewSet(viewsets.ModelViewSet):
     queryset = Booking.objects.select_related('client', 'session', 'session__movie', 'session__hall', 'seat', 'ticket').all()
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
@@ -206,7 +232,7 @@ class BookingViewSet(viewsets.ModelViewSet):
         return BookingSerializer
     
     def get_permissions(self):
-        if self.action == 'create':
+        if self.action in ['create', 'hold', 'pay']:
             return [IsAuthenticated()]
         if self.action in ['list', 'retrieve']:
             return [IsOwnerOrStaff()]
@@ -227,27 +253,154 @@ class BookingViewSet(viewsets.ModelViewSet):
         if booking.status != 'pending_payment':
             return Response({'error': 'Бронирование не ожидает оплаты'}, status=status.HTTP_400_BAD_REQUEST)
         
-        ticket = Ticket.objects.create(
-            booking=booking,
-            price=booking.session.get_price_for_category(booking.seat.category),
-            barcode=str(uuid.uuid4()).replace('-', '').upper()[:20],
-            status='active'
-        )
-        
-        Payment.objects.create(
-            ticket=ticket,
-            amount=ticket.price,
-            method=request.data.get('method', 'cash'),
-            status='completed',
-            completed_at=timezone.now()
-        )
-        # Статус Booking → paid и Ticket → active ставит сигнал payment_post_save
-
-        log_audit(request.user, 'confirm_payment',
-                  f'Оплата брони #{booking.id} ({booking.session.movie.title}), '
-                  f'билет {ticket.barcode}, {ticket.price} руб.')
+        ticket = issue_ticket(booking, request.data.get('method', 'cash'), request.user)
 
         return Response(TicketSerializer(ticket, context={'request': request}).data)
+
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
+    def hold(self, request):
+        """Атомарно удерживает до 6 мест сеанса на 15 минут («всё или ничего»)."""
+        raw_seats = request.data.get('seats')
+        if not isinstance(raw_seats, list) or not raw_seats:
+            return Response({'error': 'Не выбрано ни одного места'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if len(raw_seats) > 6:
+            return Response({'error': 'Максимум 6 мест за раз'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            session_obj = Session.objects.get(pk=request.data.get('session'), is_active=True)
+        except (Session.DoesNotExist, TypeError, ValueError):
+            return Response({'error': 'Сеанс не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+        seat_ids = []
+        for value in raw_seats:
+            try:
+                seat_ids.append(int(value))
+            except (TypeError, ValueError):
+                return Response({'error': 'Некорректный выбор мест'},
+                                status=status.HTTP_400_BAD_REQUEST)
+        if len(set(seat_ids)) != len(seat_ids):
+            return Response({'error': 'Некорректный выбор мест'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        seats_count = Seat.objects.filter(id__in=seat_ids, hall=session_obj.hall).count()
+        if seats_count != len(seat_ids):
+            return Response({'error': 'Некорректный выбор мест'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        expires_at = timezone.now() + timedelta(minutes=15)
+        active_statuses = ['created', 'pending_payment', 'paid', 'used']
+
+        class SeatTaken(Exception):
+            pass
+
+        try:
+            with transaction.atomic():
+                seats_qs = Seat.objects.filter(id__in=seat_ids, hall=session_obj.hall)
+                if connection.features.has_select_for_update:
+                    seats_qs = seats_qs.select_for_update()
+                locked_seats = list(seats_qs)
+
+                booked_qs = Booking.objects.filter(
+                    session=session_obj, seat__in=locked_seats,
+                    status__in=active_statuses
+                )
+                if connection.features.has_select_for_update:
+                    booked_qs = booked_qs.select_for_update()
+                if booked_qs.exists():
+                    raise SeatTaken()
+
+                bookings = [
+                    Booking.objects.create(
+                        client=request.user,
+                        session=session_obj,
+                        seat=seat,
+                        status='pending_payment',
+                        expires_at=expires_at,
+                    )
+                    for seat in locked_seats
+                ]
+        except SeatTaken:
+            return Response({'error': 'Одно или несколько мест уже заняты'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        except IntegrityError:
+            return Response(
+                {'error': 'Это место только что забронировали, выберите другое'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response({
+            'session': session_obj.id,
+            'expires_at': expires_at.isoformat(),
+            'bookings': BookingSerializer(
+                bookings, many=True, context={'request': request}
+            ).data,
+        }, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
+    def pay(self, request):
+        """Оплата нескольких броней одним запросом.
+
+        Клиент оплачивает только свои брони (card/online),
+        персонал — любые брони любым способом.
+        """
+        raw_ids = request.data.get('booking_ids')
+        if not isinstance(raw_ids, list) or not raw_ids:
+            return Response({'error': 'Нет броней для оплаты'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if len(raw_ids) > 6:
+            return Response({'error': 'Слишком много броней'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            booking_ids = [int(i) for i in raw_ids]
+        except (TypeError, ValueError):
+            return Response({'error': 'Некорректный идентификатор брони'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        method = request.data.get('method', 'online')
+        if method not in dict(Payment.METHOD_CHOICES):
+            return Response({'error': 'Недопустимый способ оплаты'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        user = request.user
+        is_staff = user.role in ['cashier', 'controller', 'manager', 'admin']
+        if not is_staff and method not in ['card', 'online']:
+            return Response({'error': 'Наличными оплачивает только кассир'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        with transaction.atomic():
+            bookings_qs = Booking.objects.select_related(
+                'session', 'seat'
+            ).filter(id__in=booking_ids)
+            if connection.features.has_select_for_update:
+                bookings_qs = bookings_qs.select_for_update()
+            bookings = list(bookings_qs)
+
+            if len(bookings) != len(set(booking_ids)):
+                return Response({'error': 'Бронирование не найдено'},
+                                status=status.HTTP_404_NOT_FOUND)
+
+            now = timezone.now()
+            for booking in bookings:
+                if booking.client_id != user.id and not is_staff:
+                    return Response({'error': 'Нет доступа к бронированию'},
+                                    status=status.HTTP_403_FORBIDDEN)
+                if booking.status != 'pending_payment':
+                    return Response(
+                        {'error': f'Бронирование #{booking.id} не ожидает оплаты'},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                if booking.expires_at and booking.expires_at < now:
+                    return Response(
+                        {'error': 'Время удержания мест истекло — обновите выбор'},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+            tickets = [issue_ticket(booking, method, user) for booking in bookings]
+
+        return Response(
+            TicketSerializer(tickets, many=True, context={'request': request}).data,
+            status=status.HTTP_201_CREATED,
+        )
     
     @action(detail=True, methods=['post'], permission_classes=[IsCashierOrAbove])
     def cancel(self, request, pk=None):
@@ -470,7 +623,6 @@ class DashboardViewSet(viewsets.ViewSet):
         }
         
         serializer = DashboardStatsSerializer(data)
-        serializer.is_valid()
         return Response(serializer.data)
     
     @action(detail=False, methods=['get'])
@@ -579,6 +731,9 @@ class ReviewListCreateAPIView(APIView):
         return Response(ReviewSerializer(reviews, many=True).data)
 
     def post(self, request):
+        if not request.user.is_authenticated:
+            return Response({'detail': 'Аутентификация требуется'},
+                            status=status.HTTP_401_UNAUTHORIZED)
         serializer = ReviewCreateSerializer(
             data=request.data, context={'request': request}
         )
@@ -603,6 +758,7 @@ class HomeView(TemplateView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        today = date.today()
         movies = list(Movie.objects.filter(
             status='active'
         ).select_related('genre').annotate(
@@ -610,15 +766,77 @@ class HomeView(TemplateView):
             reviews_count=Count('reviews', distinct=True),
         ).prefetch_related(
             Prefetch('sessions', queryset=Session.objects.filter(
-                date__gte=date.today(), is_active=True
-            ).order_by('date', 'time'))
+                date__gte=today, is_active=True
+            ).select_related('hall').order_by('date', 'time'))
         )[:12])
+
         for movie in movies:
-            session_dates = [s.date for s in movie.sessions.all()]
+            sessions = list(movie.sessions.all())
+            session_dates = [s.date for s in sessions]
             movie.badges = movie_badges(
                 session_dates[0], session_dates[-1]
             ) if session_dates else []
+            movie.filter_dates = sorted({s.date.isoformat() for s in sessions})
+            movie.filter_formats = sorted({s.hall.type for s in sessions})
+
+            days = {}
+            for session in sessions:
+                days.setdefault(session.date, []).append(session)
+            movie.session_days = []
+            for day, day_sessions in sorted(days.items()):
+                if day == today:
+                    label = 'Сегодня'
+                elif day == today + timedelta(days=1):
+                    label = 'Завтра'
+                else:
+                    label = day.strftime('%d.%m')
+                movie.session_days.append({
+                    'date': day, 'label': label, 'sessions': day_sessions,
+                })
         context['movies'] = movies
+
+        hero = None
+        for movie in sorted(
+            movies, key=lambda m: (m.average_rating or 0, m.reviews_count or 0),
+            reverse=True,
+        ):
+            if movie.session_days:
+                hero = movie
+                break
+        if hero is None and movies:
+            hero = movies[0]
+        context['hero'] = hero
+
+        filter_dates = []
+        for i in range(5):
+            day = today + timedelta(days=i)
+            if i == 0:
+                label = 'Сегодня'
+            elif i == 1:
+                label = 'Завтра'
+            else:
+                label = day.strftime('%d.%m')
+            filter_dates.append({'iso': day.isoformat(), 'label': label})
+        context['filter_dates'] = filter_dates
+
+        context['genres'] = Genre.objects.filter(
+            movies__status='active'
+        ).distinct().order_by('name')
+
+        context['upcoming'] = list(Movie.objects.filter(
+            status='upcoming'
+        ).select_related('genre').annotate(
+            average_rating=Avg('reviews__rating'),
+            reviews_count=Count('reviews', distinct=True),
+        ).order_by('created_at')[:6])
+
+        context['reviews'] = list(
+            Review.objects.select_related('user', 'movie')
+            .exclude(comment__isnull=True)
+            .exclude(comment='')
+            .order_by('-created_at')[:6]
+        )
+
         if self.request.user.is_authenticated:
             context['favorite_ids'] = set(
                 self.request.user.favorites.values_list('movie_id', flat=True)
@@ -816,6 +1034,9 @@ class CashierView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         today = date.today()
         
+        context['staff_shell'] = True
+        context['staff_section'] = 'cashier'
+        context['staff_role'] = self.request.user.role
         context['today'] = today
         context['movies'] = Movie.objects.filter(status='active').order_by('title')
         
@@ -836,6 +1057,10 @@ class ControllerView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        
+        context['staff_shell'] = True
+        context['staff_section'] = 'controller'
+        context['staff_role'] = self.request.user.role
         
         barcode = self.request.GET.get('barcode')
         if barcode:
@@ -907,7 +1132,16 @@ class ControllerView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
                     'message': 'Билет не найден'
                 }
         
-        # История проверок за сессию
+        # История проверок за сессию (фиксируем только что проверенный код)
+        if barcode and 'ticket_result' in context:
+            history = list(self.request.session.get('check_history', []))
+            if not history or history[0].get('barcode') != barcode:
+                history.insert(0, {
+                    'barcode': barcode,
+                    'valid': bool(context['ticket_result'].get('valid')),
+                    'time': timezone.now().strftime('%H:%M:%S'),
+                })
+                self.request.session['check_history'] = history[:50]
         context['check_history'] = self.request.session.get('check_history', [])
         
         return context
@@ -932,6 +1166,10 @@ class ManagerView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         from django.db.models import Sum, Count, Q
         from datetime import timedelta
         
+        context['staff_shell'] = True
+        context['staff_section'] = 'dashboard'
+        context['staff_role'] = self.request.user.role
+        
         today = date.today()
         context['today'] = today
         context['now'] = timezone.now()
@@ -947,12 +1185,14 @@ class ManagerView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         session_rows = []
         for s in sessions:
             total = s.hall.seats.count()
+            sold = s.sold_count or 0
             session_rows.append({
                 'time': s.time,
                 'movie': s.movie,
                 'hall': s.hall,
-                'sold': s.sold_count or 0,
+                'sold': sold,
                 'total': total,
+                'percent': round(sold / total * 100) if total else 0,
                 'revenue': int(float(s.revenue_sum or 0)),
             })
         context['sessions'] = session_rows
@@ -1010,6 +1250,232 @@ class ManagerView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         return context
 
 
+class StaffSectionMixin(LoginRequiredMixin, UserPassesTestMixin):
+    """База staff-страниц: shell с sidebar + проверка роли."""
+    login_url = 'login'
+    staff_section = ''
+    allowed_roles = ['manager', 'admin']
+
+    def test_func(self):
+        return self.request.user.role in self.allowed_roles
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['staff_shell'] = True
+        context['staff_section'] = self.staff_section
+        context['staff_role'] = self.request.user.role
+        return context
+
+
+class ManagerMoviesView(StaffSectionMixin, TemplateView):
+    template_name = 'staff/movies.html'
+    staff_section = 'movies'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['movies'] = Movie.objects.select_related('genre').annotate(
+            average_rating=Avg('reviews__rating'),
+            reviews_count=Count('reviews', distinct=True),
+        ).order_by('-created_at')[:200]
+        context['genres'] = Genre.objects.order_by('name')
+        return context
+
+
+class ManagerSessionsView(StaffSectionMixin, TemplateView):
+    template_name = 'staff/sessions.html'
+    staff_section = 'sessions'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['sessions'] = Session.objects.select_related(
+            'movie', 'hall'
+        ).filter(date__gte=date.today()).order_by('date', 'time')[:200]
+        context['movies'] = Movie.objects.filter(
+            status__in=['active', 'upcoming']
+        ).order_by('title')
+        context['halls'] = Hall.objects.order_by('number')
+        return context
+
+
+class ManagerHallsView(StaffSectionMixin, TemplateView):
+    template_name = 'staff/halls.html'
+    staff_section = 'halls'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['halls'] = Hall.objects.annotate(
+            seats_total=Count('seats'),
+            sessions_count=Count('sessions', filter=Q(sessions__is_active=True)),
+        ).order_by('number')
+        return context
+
+
+class ManagerBookingsView(StaffSectionMixin, TemplateView):
+    template_name = 'staff/bookings.html'
+    staff_section = 'bookings'
+    allowed_roles = ['cashier', 'controller', 'manager', 'admin']
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        bookings = Booking.objects.select_related(
+            'client', 'session', 'session__movie', 'session__hall',
+            'seat', 'ticket',
+        ).order_by('-created_at')
+        status_filter = self.request.GET.get('status')
+        if status_filter in dict(Booking.STATUS_CHOICES):
+            bookings = bookings.filter(status=status_filter)
+        context['bookings'] = bookings[:200]
+        context['status_filter'] = status_filter if status_filter in dict(Booking.STATUS_CHOICES) else ''
+        context['status_choices'] = Booking.STATUS_CHOICES
+        return context
+
+
+class ManagerTicketsView(StaffSectionMixin, TemplateView):
+    template_name = 'staff/tickets.html'
+    staff_section = 'tickets'
+    allowed_roles = ['cashier', 'controller', 'manager', 'admin']
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        tickets = Ticket.objects.select_related(
+            'booking', 'booking__client', 'booking__session',
+            'booking__session__movie', 'booking__session__hall', 'booking__seat',
+        ).order_by('-issued_at')
+        status_filter = self.request.GET.get('status')
+        if status_filter in dict(Ticket.STATUS_CHOICES):
+            tickets = tickets.filter(status=status_filter)
+        context['tickets'] = tickets[:200]
+        context['status_filter'] = status_filter if status_filter in dict(Ticket.STATUS_CHOICES) else ''
+        context['status_choices'] = Ticket.STATUS_CHOICES
+        return context
+
+
+class ManagerClientsView(StaffSectionMixin, TemplateView):
+    template_name = 'staff/clients.html'
+    staff_section = 'clients'
+    allowed_roles = ['cashier', 'manager', 'admin']
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['clients'] = User.objects.filter(role='client').annotate(
+            bookings_total=Count('bookings'),
+            tickets_total=Count('bookings__ticket'),
+        ).order_by('-date_joined')[:200]
+        return context
+
+
+class ManagerSalesView(StaffSectionMixin, TemplateView):
+    template_name = 'staff/sales.html'
+    staff_section = 'sales'
+    allowed_roles = ['cashier', 'manager', 'admin']
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        today = date.today()
+        payments = Payment.objects.select_related(
+            'ticket', 'ticket__booking', 'ticket__booking__client',
+            'ticket__booking__session', 'ticket__booking__session__movie',
+        ).filter(status='completed').order_by('-completed_at')
+        context['payments'] = payments[:200]
+        context['sales_today'] = int(float(
+            payments.filter(completed_at__date=today).aggregate(
+                total=Sum('amount'))['total'] or 0
+        ))
+        context['tickets_today'] = Ticket.objects.filter(
+            status__in=['active', 'used'], issued_at__date=today
+        ).count()
+        context['method_choices'] = Payment.METHOD_CHOICES
+        return context
+
+
+class ManagerReportsView(StaffSectionMixin, TemplateView):
+    template_name = 'staff/reports.html'
+    staff_section = 'reports'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['today'] = date.today()
+        context['date_from'] = date.today() - timedelta(days=30)
+
+        period_start = context['date_from']
+        payments = Payment.objects.filter(
+            status='completed',
+            completed_at__date__gte=period_start,
+        )
+        daily_rows = (
+            payments
+            .annotate(day=TruncDate('completed_at'))
+            .values('day')
+            .annotate(revenue=Sum('amount'), tickets=Count('id'))
+            .order_by('day')
+        )
+        daily = {r['day']: r for r in daily_rows}
+
+        chart = []
+        total_revenue = 0
+        total_tickets = 0
+        for i in range(30, -1, -1):
+            d = period_start + timedelta(days=i)
+            row = daily.get(d)
+            rev = int(float(row['revenue'])) if row else 0
+            cnt = row['tickets'] if row else 0
+            total_revenue += rev
+            total_tickets += cnt
+            chart.append({'day': d.strftime('%d.%m'), 'revenue': rev, 'tickets': cnt})
+        max_rev = max(c['revenue'] for c in chart) or 1
+        for c in chart:
+            c['percent'] = max(3, round(c['revenue'] / max_rev * 100))
+        context['chart'] = chart
+        context['totals'] = {
+            'revenue': total_revenue,
+            'tickets': total_tickets,
+            'avg': round(total_revenue / total_tickets) if total_tickets else 0,
+        }
+
+        by_movie_rows = (
+            payments
+            .values('ticket__booking__session__movie__title')
+            .annotate(revenue=Sum('amount'), tickets=Count('id'))
+            .order_by('-revenue')[:10]
+        )
+        context['by_movie'] = [
+            {
+                'title': r['ticket__booking__session__movie__title'] or '—',
+                'revenue': int(float(r['revenue'])),
+                'tickets': r['tickets'],
+            }
+            for r in by_movie_rows
+        ]
+
+        by_method_rows = (
+            payments
+            .values('method')
+            .annotate(revenue=Sum('amount'), tickets=Count('id'))
+            .order_by('-revenue')
+        )
+        context['by_method'] = [
+            {
+                'method': r['method'],
+                'label': dict(Payment.METHOD_CHOICES).get(r['method'], r['method']),
+                'revenue': int(float(r['revenue'])),
+                'tickets': r['tickets'],
+            }
+            for r in by_method_rows
+        ]
+        return context
+
+
+class ManagerUsersView(StaffSectionMixin, TemplateView):
+    template_name = 'staff/users.html'
+    staff_section = 'users'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['staff_users'] = User.objects.order_by('-date_joined')[:200]
+        context['role_choices'] = User.ROLE_CHOICES
+        return context
+
+
 class RegisterView(FormView):
     template_name = 'register.html'
     form_class = RegisterForm
@@ -1026,3 +1492,53 @@ class RegisterView(FormView):
         login(self.request, user)
         messages.success(self.request, 'Регистрация прошла успешно! Добро пожаловать в АИС «Аврора».')
         return super().form_valid(form)
+
+# -- SEO: robots.txt � sitemap.xml --------------------------
+from django.http import HttpResponse  # noqa: E402
+
+
+def robots_txt(request):
+    lines = [
+        'User-agent: *',
+        'Allow: /',
+        'Disallow: /admin/',
+        'Disallow: /manager/',
+        'Disallow: /cashier/',
+        'Disallow: /controller/',
+        'Disallow: /profile/',
+        'Disallow: /api/',
+        'Disallow: /login/',
+        'Disallow: /register/',
+        'Disallow: /logout/',
+        f'Sitemap: {request.build_absolute_uri("/sitemap.xml")}',
+        '',
+    ]
+    return HttpResponse('\n'.join(lines), content_type='text/plain; charset=utf-8')
+
+
+def sitemap_xml(request):
+    from cinema.models import Movie
+
+    urls = [
+        (request.build_absolute_uri('/'), None, 'daily', '1.0'),
+    ]
+    for m in Movie.objects.filter(status='active').order_by('id'):
+        urls.append((
+            request.build_absolute_uri(f'/film/{m.id}/'),
+            m.updated_at.date().isoformat(),
+            'weekly',
+            '0.8',
+        ))
+    parts = ['<?xml version="1.0" encoding="UTF-8"?>',
+             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    for loc, lastmod, freq, priority in urls:
+        parts.append('  <url>')
+        parts.append(f'    <loc>{loc}</loc>')
+        if lastmod:
+            parts.append(f'    <lastmod>{lastmod}</lastmod>')
+        parts.append(f'    <changefreq>{freq}</changefreq>')
+        parts.append(f'    <priority>{priority}</priority>')
+        parts.append('  </url>')
+    parts.append('</urlset>')
+    return HttpResponse('\n'.join(parts), content_type='application/xml; charset=utf-8')
+

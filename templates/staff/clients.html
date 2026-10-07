@@ -1,0 +1,52 @@
+{% extends 'staff_base.html' %}
+{% load static %}
+{% block title %}Клиенты — Управление{% endblock %}
+
+{% block staff_content %}
+<div class="staff-topline">
+    <div>
+        <p class="eyebrow">Операции</p>
+        <h1 class="staff-title">КЛИЕНТЫ</h1>
+        <p class="staff-sub">{{ clients|length }} зарегистрированных зрителей</p>
+    </div>
+</div>
+
+<div class="staff-toolbar">
+    <input type="search" class="form-control" placeholder="Поиск: имя, email, логин…" data-table-search="#clientsTable" aria-label="Поиск клиентов" style="max-width:24rem;">
+    <span class="spacer"></span>
+    <a href="{% url 'staff_bookings' %}" class="btn btn-outline btn-sm">Все брони</a>
+</div>
+
+<section class="panel" style="overflow:hidden;">
+    <div class="table-wrap" style="border:none;">
+        <table class="table" id="clientsTable">
+            <thead>
+                <tr><th>Зритель</th><th>Email</th><th>Телефон</th><th>Регистрация</th><th>Броней</th><th>Билетов</th></tr>
+            </thead>
+            <tbody>
+                {% for c in clients %}
+                <tr>
+                    <td>
+                        <b>{{ c.get_full_name|default:c.username }}</b>
+                        <div class="text-xs text-muted">@{{ c.username }}</div>
+                    </td>
+                    <td class="text-xs">{{ c.email|default:"—" }}</td>
+                    <td class="text-xs">{{ c.phone|default:"—" }}</td>
+                    <td class="text-xs text-muted">{{ c.date_joined|date:"d.m.Y" }}</td>
+                    <td>
+                        {% if c.bookings_total %}
+                        <a href="{% url 'staff_bookings' %}?status=paid" class="badge badge-gold" style="text-decoration:none;">{{ c.bookings_total }}</a>
+                        {% else %}<span class="text-muted">0</span>{% endif %}
+                    </td>
+                    <td>
+                        {% if c.tickets_total %}<b>{{ c.tickets_total }}</b>{% else %}<span class="text-muted">0</span>{% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6"><div class="empty-state" style="border:none;"><h3>Клиентов пока нет</h3><p>Зрители появятся здесь после первой регистрации.</p></div></td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

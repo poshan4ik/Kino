@@ -1,0 +1,39 @@
+{% extends "admin/index.html" %}
+{% load i18n admin_stats %}
+
+{% block content %}
+<div class="aurora-dash">
+    <div class="aurora-dash-head">
+        <span class="aurora-dash-eyebrow">АИС «Аврора» · Тараз</span>
+        <h1 class="aurora-dash-title">СВОДКА НА СЕГОДНЯ</h1>
+    </div>
+    {% admin_stats as s %}
+    <div class="aurora-kpi-grid">
+        <div class="aurora-kpi">
+            <span class="aurora-kpi-label">Выручка сегодня</span>
+            <span class="aurora-kpi-value gold">{{ s.revenue_today|floatformat:0 }} ₽</span>
+        </div>
+        <div class="aurora-kpi">
+            <span class="aurora-kpi-label">Билетов за день</span>
+            <span class="aurora-kpi-value">{{ s.tickets_today }}</span>
+        </div>
+        <div class="aurora-kpi">
+            <span class="aurora-kpi-label">Сеансов активно</span>
+            <span class="aurora-kpi-value accent">{{ s.sessions_today }}</span>
+        </div>
+        <div class="aurora-kpi">
+            <span class="aurora-kpi-label">Брони в ожидании</span>
+            <span class="aurora-kpi-value">{{ s.bookings_active }}</span>
+        </div>
+        <div class="aurora-kpi">
+            <span class="aurora-kpi-label">Фильмов в прокате</span>
+            <span class="aurora-kpi-value">{{ s.movies }}</span>
+        </div>
+        <div class="aurora-kpi">
+            <span class="aurora-kpi-label">Клиентов</span>
+            <span class="aurora-kpi-value">{{ s.clients }}</span>
+        </div>
+    </div>
+</div>
+{{ block.super }}
+{% endblock %}

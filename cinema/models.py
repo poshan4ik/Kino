@@ -69,6 +69,11 @@ class Movie(models.Model):
     )
     description = models.TextField(blank=True, verbose_name='Описание')
     poster = models.ImageField(upload_to='posters/', blank=True, null=True, verbose_name='Постер')
+    trailer_url = models.URLField(
+        max_length=300, blank=True,
+        verbose_name='Ссылка на трейлер (YouTube)',
+        help_text='Например: https://www.youtube.com/watch?v=…'
+    )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft', verbose_name='Статус проката')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -77,6 +82,16 @@ class Movie(models.Model):
         verbose_name = 'Фильм'
         verbose_name_plural = 'Фильмы'
         ordering = ['-created_at']
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(duration__gte=1),
+                name='movie_duration_positive',
+            ),
+            models.CheckConstraint(
+                check=models.Q(age_rating__gte=0) & models.Q(age_rating__lte=21),
+                name='movie_age_rating_range',
+            ),
+        ]
     
     def __str__(self):
         return self.title
@@ -99,6 +114,12 @@ class Hall(models.Model):
         verbose_name = 'Зал'
         verbose_name_plural = 'Залы'
         ordering = ['number']
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(capacity__gte=1),
+                name='hall_capacity_positive',
+            ),
+        ]
     
     def __str__(self):
         return f'Зал {self.number} ({self.get_type_display()})'
@@ -165,8 +186,18 @@ class Session(models.Model):
         verbose_name = 'Сеанс'
         verbose_name_plural = 'Сеансы'
         ordering = ['date', 'time']
+        indexes = [
+            models.Index(fields=['date', 'time'], name='idx_session_date_time'),
+            models.Index(fields=['is_active', 'date'], name='idx_session_active_date'),
+        ]
         constraints = [
-            models.UniqueConstraint(fields=['hall', 'date', 'time'], name='unique_session_in_hall')
+            models.UniqueConstraint(fields=['hall', 'date', 'time'], name='unique_session_in_hall'),
+            models.CheckConstraint(
+                check=models.Q(price_standard__gte=0)
+                & models.Q(price_comfort__gte=0)
+                & models.Q(price_vip__gte=0),
+                name='session_prices_nonnegative',
+            ),
         ]
     
     def __str__(self):
@@ -233,6 +264,10 @@ class Booking(models.Model):
         verbose_name = 'Бронирование'
         verbose_name_plural = 'Бронирования'
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['status', 'created_at'], name='idx_booking_status_created'),
+            models.Index(fields=['expires_at'], name='idx_booking_expires_at'),
+        ]
         constraints = [
             models.UniqueConstraint(
                 fields=['session', 'seat'],
@@ -274,6 +309,15 @@ class Ticket(models.Model):
         verbose_name = 'Билет'
         verbose_name_plural = 'Билеты'
         ordering = ['-issued_at']
+        indexes = [
+            models.Index(fields=['status', 'issued_at'], name='idx_ticket_status_issued'),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(price__gte=0),
+                name='ticket_price_nonnegative',
+            ),
+        ]
     
     def __str__(self):
         return f'Билет #{self.barcode} ({self.get_status_display()})'
@@ -312,6 +356,15 @@ class Payment(models.Model):
         verbose_name = 'Платёж'
         verbose_name_plural = 'Платежи'
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['status', 'created_at'], name='idx_payment_status_created'),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(amount__gte=0),
+                name='payment_amount_nonnegative',
+            ),
+        ]
     
     def __str__(self):
         return f'Платёж #{self.id} - {self.amount} руб. ({self.get_status_display()})'
@@ -331,6 +384,10 @@ class AuditLog(models.Model):
         verbose_name = 'Запись аудита'
         verbose_name_plural = 'Журнал аудита'
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['-created_at'], name='idx_audit_created_desc'),
+            models.Index(fields=['action', '-created_at'], name='idx_audit_action_created'),
+        ]
 
     def __str__(self):
         user = self.user.username if self.user else '—'
@@ -395,6 +452,10 @@ class Review(models.Model):
         ordering = ['-created_at']
         constraints = [
             models.UniqueConstraint(fields=['user', 'movie'], name='unique_review_per_user'),
+            models.CheckConstraint(
+                check=models.Q(rating__gte=1) & models.Q(rating__lte=5),
+                name='review_rating_range',
+            ),
         ]
 
     def __str__(self):

@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block title %}500 — Внутренняя ошибка — Аврора{% endblock %}
+{% block meta_description %}Внутренняя ошибка сервера — кинотеатр «Аврора», Тараз.{% endblock %}
+
+{% block content %}
+<main class="page-shell err-page">
+    <div class="err-wrap">
+        <p class="eyebrow">Ошибка 500</p>
+        <div class="err-code" aria-hidden="true">500</div>
+        <h1 class="err-title">ПРОЕКТОР ЗАГЛОРЁЛСЯ</h1>
+        <p class="err-sub">Что-то пошло не так на нашей стороне. Мы уже разбираемся — попробуйте обновить страницу.</p>
+        <div class="hero-actions" style="justify-content:center;margin-top:1.75rem;">
+            <a href="{% url 'home' %}" class="btn btn-primary">На главную</a>
+            <button type="button" class="btn btn-outline" onclick="location.reload()">Обновить</button>
+        </div>
+    </div>
+</main>
+{% endblock %}

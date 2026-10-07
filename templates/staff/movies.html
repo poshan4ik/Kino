@@ -1,0 +1,119 @@
+{% extends 'staff_base.html' %}
+{% load static %}
+{% block title %}Фильмы — Управление{% endblock %}
+
+{% block staff_content %}
+<div class="staff-topline">
+    <div>
+        <p class="eyebrow">Справочники</p>
+        <h1 class="staff-title">ФИЛЬМЫ</h1>
+        <p class="staff-sub">{{ movies|length }} фильмов в каталоге</p>
+    </div>
+    <button type="button" class="btn btn-primary btn-sm" data-modal-open="#movieModal" data-title="Новый фильм">
+        + Добавить фильм
+    </button>
+</div>
+
+<div class="staff-toolbar">
+    <input type="search" class="form-control" placeholder="Поиск по названию…" data-table-search="#moviesTable" aria-label="Поиск по названию">
+    <span class="spacer"></span>
+    <span class="text-xs text-muted">показаны последние {{ movies|length }}</span>
+</div>
+
+<section class="panel" style="overflow:hidden;">
+    <div class="table-wrap" style="border:none;">
+        <table class="table" id="moviesTable">
+            <thead>
+                <tr><th>Постер</th><th>Название</th><th>Жанр</th><th>Возраст</th><th>Мин</th><th>Рейтинг</th><th>Статус</th><th></th></tr>
+            </thead>
+            <tbody>
+                {% for m in movies %}
+                <tr>
+                    <td>
+                        {% if m.poster %}
+                        <img src="{{ m.poster.url }}" alt="" width="36" height="54" style="width:36px;height:54px;object-fit:cover;border-radius:6px;display:block;">
+                        {% else %}
+                        <span style="display:block;width:36px;height:54px;border-radius:6px;background:var(--surface-raised);"></span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <b>{{ m.title }}</b>
+                        <div class="text-xs text-muted">{{ m.reviews_count }} отз.</div>
+                    </td>
+                    <td>{{ m.genre.name }}</td>
+                    <td><span class="badge">{{ m.age_rating }}+</span></td>
+                    <td>{{ m.duration }}</td>
+                    <td>{% if m.average_rating %}<span style="color:var(--gold);">★ {{ m.average_rating|floatformat:1 }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                    <td>
+                        <span class="badge {% if m.status == 'active' %}badge-green{% elif m.status == 'upcoming' %}badge-gold{% elif m.status == 'draft' %}badge-status-created{% else %}badge-status-cancelled{% endif %}">
+                            {{ m.get_status_display }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="row-actions">
+                            <button type="button" class="btn btn-outline"
+                                    data-modal-open="#movieModal" data-fill
+                                    data-url="/api/movies/{{ m.id }}/" data-method="PUT"
+                                    data-title="Редактировать фильм"
+                                    data-field-title="{{ m.title }}"
+                                    data-field-genre="{{ m.genre_id }}"
+                                    data-field-duration="{{ m.duration }}"
+                                    data-field-age_rating="{{ m.age_rating }}"
+                                    data-field-status="{{ m.status }}"
+                                    data-field-description="{{ m.description|escape }}"
+                                    data-field-trailer_url="{{ m.trailer_url|escape }}">Ред.</button>
+                            <button type="button" class="btn btn-outline"
+                                    data-api-delete data-url="/api/movies/{{ m.id }}/"
+                                    data-confirm="Удалить фильм «{{ m.title|escape }}»?">✕</button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8"><div class="empty-state" style="border:none;"><h3>Фильмов пока нет</h3><p>Добавьте первый фильм — он появится в афише.</p></div></td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- Movie modal -->
+<div class="modal-overlay" id="movieModal">
+    <div class="modal-card form-card">
+        <h3 data-form-title>Новый фильм</h3>
+        <form class="staff-form" data-crud data-url="/api/movies/" data-method="POST" data-success="Фильм сохранён">
+            <label class="field"><span class="field-label">Название *</span>
+                <input type="text" class="form-control" name="title" required maxlength="255"></label>
+            <div class="grid-2">
+                <label class="field"><span class="field-label">Жанр *</span>
+                    <select class="form-control" name="genre" required>
+                        {% for g in genres %}<option value="{{ g.id }}">{{ g.name }}</option>{% endfor %}
+                    </select></label>
+                <label class="field"><span class="field-label">Статус</span>
+                    <select class="form-control" name="status">
+                        <option value="draft">Черновик</option>
+                        <option value="active">В прокате</option>
+                        <option value="upcoming">Ожидается</option>
+                        <option value="ended">Прокат завершён</option>
+                    </select></label>
+            </div>
+            <div class="grid-2">
+                <label class="field"><span class="field-label">Длительность, мин *</span>
+                    <input type="number" class="form-control" name="duration" min="1" required></label>
+                <label class="field"><span class="field-label">Возраст, + *</span>
+                    <input type="number" class="form-control" name="age_rating" min="0" max="21" required></label>
+            </div>
+            <label class="field"><span class="field-label">Описание</span>
+                <textarea class="form-control" name="description" rows="3"></textarea></label>
+            <label class="field"><span class="field-label">Трейлер (ссылка YouTube)</span>
+                <input type="url" class="form-control" name="trailer_url" placeholder="https://www.youtube.com/watch?v=…"></label>
+            <label class="field"><span class="field-label">Постер (JPG/PNG)</span>
+                <input type="file" class="form-control" name="poster" accept="image/*"></label>
+            <p class="help">При редактировании оставьте поле пустым, чтобы сохранить текущий постер.</p>
+            <div class="form-actions">
+                <button type="button" class="btn btn-outline" data-modal-close>Отмена</button>
+                <button type="submit" class="btn btn-primary">Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

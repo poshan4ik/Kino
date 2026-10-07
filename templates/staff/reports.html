@@ -1,0 +1,110 @@
+{% extends 'staff_base.html' %}
+{% load static %}
+{% block title %}Отчёты — Управление{% endblock %}
+
+{% block staff_content %}
+<div class="staff-topline">
+    <div>
+        <p class="eyebrow">Аналитика</p>
+        <h1 class="staff-title">ОТЧЁТЫ</h1>
+        <p class="staff-sub">период: {{ date_from|date:"d.m.Y" }} — {{ today|date:"d.m.Y" }} (31 день)</p>
+    </div>
+    <a href="{% url 'staff_sales' %}" class="btn btn-outline btn-sm">Журнал продаж</a>
+</div>
+
+<div class="grid-4" style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem;">
+    <div class="kpi-card">
+        <span class="kpi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg></span>
+        <span class="kpi-label">Выручка за период</span>
+        <span class="kpi-value gold">{{ totals.revenue|floatformat:0 }} ₽</span>
+        <span class="kpi-note">завершённые платежи</span>
+    </div>
+    <div class="kpi-card">
+        <span class="kpi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z"/></svg></span>
+        <span class="kpi-label">Продано билетов</span>
+        <span class="kpi-value">{{ totals.tickets }}</span>
+        <span class="kpi-note">за 31 день</span>
+    </div>
+    <div class="kpi-card">
+        <span class="kpi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 5 5 19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg></span>
+        <span class="kpi-label">Средний чек</span>
+        <span class="kpi-value accent">{{ totals.avg|floatformat:0 }} ₽</span>
+        <span class="kpi-note">на билет</span>
+    </div>
+    <div class="kpi-card">
+        <span class="kpi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="2" width="20" height="20" rx="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg></span>
+        <span class="kpi-label">Фильмов в прокате</span>
+        <span class="kpi-value">{{ by_movie|length }}</span>
+        <span class="kpi-note">с продажами</span>
+    </div>
+</div>
+
+<section class="panel p-5" style="margin-bottom:1.5rem;">
+    <div class="flex items-center justify-between gap-2" style="margin-bottom:1.25rem;">
+        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:var(--text);margin:0;">ВЫРУЧКА ПО ДНЯМ</h2>
+        <span class="text-xs text-muted">максимум: {{ chart.0.day }}…</span>
+    </div>
+    <div class="bar-chart dense">
+        {% for c in chart %}
+        <div class="bar-col" title="{{ c.day }}: {{ c.revenue|floatformat:0 }} ₽ · {{ c.tickets }} б.">
+            <span class="bar-val">{{ c.revenue|floatformat:0 }}</span>
+            <div class="bar" style="height:{{ c.percent }}%;"></div>
+            {% if forloop.counter0|divisibleby:5 %}<span class="bar-day">{{ c.day }}</span>{% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<div style="display:grid;grid-template-columns:1.3fr 1fr;gap:1rem;" class="dash-grid">
+    <section class="panel" style="overflow:hidden;">
+        <div class="flex items-center justify-between gap-2" style="padding:1.25rem 1.25rem 0;">
+            <h2 style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:var(--text);margin:0;">ФИЛЬМЫ</h2>
+            <span class="text-xs text-muted">по выручке</span>
+        </div>
+        <div class="table-wrap" style="border:none;">
+            <table class="table">
+                <thead><tr><th>Фильм</th><th>Билетов</th><th style="text-align:right;">Выручка</th></tr></thead>
+                <tbody>
+                    {% for r in by_movie %}
+                    <tr>
+                        <td><b>{{ r.title }}</b></td>
+                        <td>{{ r.tickets }}</td>
+                        <td style="text-align:right;"><b>{{ r.revenue|floatformat:0 }} ₽</b></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3" class="text-center text-muted">За период продаж нет</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="panel" style="overflow:hidden;">
+        <div class="flex items-center justify-between gap-2" style="padding:1.25rem 1.25rem 0;">
+            <h2 style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:var(--text);margin:0;">СПОСОБЫ ОПЛАТЫ</h2>
+        </div>
+        <div class="table-wrap" style="border:none;">
+            <table class="table">
+                <thead><tr><th>Способ</th><th>Платежей</th><th style="text-align:right;">Сумма</th></tr></thead>
+                <tbody>
+                    {% for r in by_method %}
+                    <tr>
+                        <td><span class="badge">{{ r.label }}</span></td>
+                        <td>{{ r.tickets }}</td>
+                        <td style="text-align:right;"><b>{{ r.revenue|floatformat:0 }} ₽</b></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3" class="text-center text-muted">За период платежей нет</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+<style>
+@media (max-width: 980px) { .dash-grid { grid-template-columns: 1fr !important; } }
+@media (max-width: 760px) { .grid-4 { grid-template-columns: repeat(2, 1fr) !important; } }
+@media (max-width: 460px) { .grid-4 { grid-template-columns: 1fr !important; } }
+</style>
+{% endblock %}

@@ -5,6 +5,12 @@ from .models import (
     AuditLog, log_audit, Favorite, Review,
 )
 
+# ── Брендинг админ-панели «Аврора» ─────────────────────────
+admin.site.site_header = 'Аврора · АИС управления кинотеатром'
+admin.site.site_title = 'Аврора · Админ'
+admin.site.index_title = 'Панель управления'
+admin.site.index_template = 'admin/index_custom.html'
+
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):

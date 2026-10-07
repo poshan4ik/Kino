@@ -1,0 +1,78 @@
+{% extends 'staff_base.html' %}
+{% load static %}
+{% block title %}Брони — Управление{% endblock %}
+
+{% block staff_content %}
+<div class="staff-topline">
+    <div>
+        <p class="eyebrow">Операции</p>
+        <h1 class="staff-title">БРОНИ</h1>
+        <p class="staff-sub">{{ bookings|length }} записей · оплата и отмена бронирований</p>
+    </div>
+</div>
+
+<div class="staff-toolbar">
+    <input type="search" class="form-control" placeholder="Поиск: зритель, фильм…" data-table-search="#bookingsTable" aria-label="Поиск">
+    <select class="form-control" style="max-width:13rem;" data-filter-select="status" aria-label="Фильтр по статусу">
+        <option value="">Все статусы</option>
+        {% for value, label in status_choices %}
+        <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <span class="spacer"></span>
+    {% if status_filter %}
+    <a href="{% url 'staff_bookings' %}" class="btn btn-outline btn-sm">Сбросить фильтр</a>
+    {% endif %}
+</div>
+
+<section class="panel" style="overflow:hidden;">
+    <div class="table-wrap" style="border:none;">
+        <table class="table" id="bookingsTable">
+            <thead>
+                <tr><th>#</th><th>Зритель</th><th>Сеанс</th><th>Место</th><th>Статус</th><th>Создана</th><th></th></tr>
+            </thead>
+            <tbody>
+                {% for b in bookings %}
+                <tr>
+                    <td><b>{{ b.id }}</b></td>
+                    <td>
+                        {{ b.client.get_full_name|default:b.client.username }}
+                        <div class="text-xs text-muted">{{ b.client.email }}</div>
+                    </td>
+                    <td>
+                        <b>{{ b.session.movie.title }}</b>
+                        <div class="text-xs text-muted">{{ b.session.date|date:"d.m.Y" }} {{ b.session.time|time:"H:i" }} · Зал {{ b.session.hall.number }}</div>
+                    </td>
+                    <td>Ряд {{ b.seat.row }}, № {{ b.seat.number }}</td>
+                    <td>
+                        <span class="badge badge-status-{{ b.status }}">{{ b.get_status_display }}</span>
+                        {% if b.ticket %}
+                        <div class="text-xs text-muted" style="font-family:monospace;">{{ b.ticket.barcode }}</div>
+                        {% endif %}
+                    </td>
+                    <td class="text-xs text-muted">{{ b.created_at|date:"d.m.y H:i" }}</td>
+                    <td>
+                        <div class="row-actions">
+                            {% if b.status == 'pending_payment' %}
+                            <button type="button" class="btn btn-primary"
+                                    data-api-action data-url="/api/bookings/pay/"
+                                    data-api-body='{"booking_ids":[{{ b.id }}],"method":"cash"}'
+                                    data-confirm="Оплатить бронь #{{ b.id }} наличными?"
+                                    data-success="Оплата проведена">Оплатить</button>
+                            {% endif %}
+                            {% if b.status == 'created' or b.status == 'pending_payment' or b.status == 'expired' %}
+                            <button type="button" class="btn btn-outline"
+                                    data-api-delete data-url="/api/bookings/{{ b.id }}/"
+                                    data-confirm="Отменить бронь #{{ b.id }}? Место снова станет свободным.">Отменить</button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7"><div class="empty-state" style="border:none;"><h3>Броней нет</h3><p>По выбранному фильтру записей не найдено.</p></div></td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

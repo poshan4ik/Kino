@@ -1,91 +1,79 @@
-{% extends 'base.html' %}
+{% extends 'staff_base.html' %}
 {% load static %}
-{% block title %}Касса — Аврора{% endblock %}
+{% block title %}Касса — Рабочее место{% endblock %}
 
-{% block content %}
-<main class="page-shell" style="padding:2rem 0 3.5rem;">
-    <div class="section-rule" style="margin-bottom:1.25rem;"></div>
-    <p class="eyebrow">Рабочее место</p>
-    <h1 style="font-family:'Bebas Neue',sans-serif;font-size:clamp(2.5rem,5vw,3.5rem);line-height:1;color:var(--text);margin:0;">КАССА</h1>
-    <p style="margin:.5rem 0 0;font-size:.875rem;color:var(--text-muted);">Смена №184 · Кассир: {{ user.get_full_name|default:user.username }}</p>
+{% block staff_content %}
+<div class="staff-topline">
+    <div>
+        <p class="eyebrow">Продажа билетов</p>
+        <h1 class="staff-title">КАССА</h1>
+        <p class="staff-sub">{{ today|date:"d.m.Y" }} · выберите сеанс и места — оплата наличными или картой</p>
+    </div>
+    <div class="flex items-center gap-2 flex-wrap">
+        <span class="badge badge-green">Кассир: {{ request.user.get_full_name|default:request.user.username }}</span>
+    </div>
+</div>
 
-    <div style="display:grid;gap:1.5rem;grid-template-columns:1fr 330px;align-items:start;margin-top:2rem;" class="cashier-grid">
-        <!-- Sessions -->
-        <section>
-            <div class="panel" style="display:grid;gap:.75rem;padding:1rem;grid-template-columns:1fr auto;align-items:center;" class="search-row">
-                <label style="position:relative;">
-                    <svg style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--text-muted);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                    <input type="text" class="form-control" style="height:44px;padding-left:2.5rem;" placeholder="Фильм, номер заказа или билет">
-                </label>
-                <button class="btn btn-outline" style="height:44px;">📅 Сегодня</button>
-            </div>
+<div class="staff-toolbar">
+    <input type="search" class="form-control" placeholder="Поиск по фильму…" data-table-search="#cashTable" aria-label="Поиск по фильму">
+    <span class="spacer"></span>
+    <span class="text-xs text-muted">Сеансов сегодня: {{ sessions|length }}</span>
+</div>
 
-            <div style="display:flex;flex-direction:column;gap:.75rem;margin-top:1.25rem;">
-                {% for session in sessions %}
-                <article class="panel" style="padding:1rem;">
-                    <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.75rem;">
-                        <div>
-                            <h2 style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:var(--text);margin:0;">{{ session.movie.title }}</h2>
-                            <p style="margin:.25rem 0 0;font-size:.75rem;color:var(--text-muted);">Зал {{ session.hall.number }} · {{ session.hall.get_type_display }} · {{ session.movie.duration }} мин</p>
-                        </div>
-                        {% if forloop.first %}
-                        <span class="badge badge-green">Идёт продажа</span>
-                        {% else %}
-                        <span class="badge badge-blue">Доступно</span>
-                        {% endif %}
-                    </div>
-                    <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem;align-items:center;">
-                        <button class="session-pill selected">{{ session.time|time:"H:i" }}</button>
-                        <span style="font-size:.75rem;color:var(--text-muted);margin-left:auto;">{{ session.get_available_seats.count }} свободно</span>
-                    </div>
-                    <div style="margin-top:.75rem;">
-                        <a href="{% url 'booking' session.id %}" class="btn btn-outline btn-sm">Выбрать места</a>
-                    </div>
-                </article>
+<section class="panel" style="overflow:hidden;">
+    <div class="table-wrap" style="border:none;">
+        <table class="table" id="cashTable">
+            <thead>
+                <tr><th>Время</th><th>Фильм</th><th>Зал</th><th>Свободно</th><th></th></tr>
+            </thead>
+            <tbody>
+                {% for s in sessions %}
+                <tr>
+                    <td><b>{{ s.time|time:"H:i" }}</b></td>
+                    <td>
+                        <b>{{ s.movie.title }}</b>
+                        <span class="text-xs text-muted"> · {{ s.movie.age_rating }}+</span>
+                    </td>
+                    <td>Зал {{ s.hall.number }} <span class="text-xs text-muted">{{ s.hall.get_type_display }}</span></td>
+                    <td>
+                        {% with free=s.get_available_seats.count %}
+                        <span class="badge {% if free > 20 %}badge-green{% elif free > 0 %}badge-gold{% else %}badge-status-cancelled{% endif %}">
+                            {{ free }} мест
+                        </span>
+                        {% endwith %}
+                    </td>
+                    <td style="text-align:right;">
+                        <button type="button" class="btn btn-primary btn-sm"
+                                data-book-session="{{ s.id }}"
+                                data-auth="1"
+                                data-methods="cash,card">
+                            Продать билет
+                        </button>
+                    </td>
+                </tr>
                 {% empty %}
-                <div class="empty-state panel"><p>Сеансов на сегодня нет</p></div>
+                <tr>
+                    <td colspan="5">
+                        <div class="empty-state" style="border:none;">
+                            <h3>Сегодня сеансов нет</h3>
+                            <p>Добавьте сеансы в разделе управления или выберите другой день.</p>
+                        </div>
+                    </td>
+                </tr>
                 {% endfor %}
-            </div>
-        </section>
-
-        <!-- Order -->
-        <aside class="panel" style="padding:1.25rem;position:sticky;top:76px;">
-            <p class="eyebrow">Текущий заказ</p>
-            <h2 style="font-family:'Bebas Neue',sans-serif;font-size:1.75rem;color:var(--text);margin:0;">—</h2>
-            <p style="margin:.25rem 0 0;font-size:.875rem;color:var(--text-muted);">Выберите сеанс слева</p>
-
-            <div style="border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:1rem 0;margin-top:1.25rem;">
-                <p style="font-size:.875rem;color:var(--text-muted);margin:0;">Места появятся после выбора</p>
-            </div>
-
-            <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:1rem;margin-top:1rem;">
-                <b>К оплате</b>
-                <b style="font-size:1.25rem;">0 ₽</b>
-            </div>
-
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-top:1.25rem;">
-                <button class="btn btn-primary" disabled>💳 Картой</button>
-                <button class="btn btn-secondary" disabled>💵 Наличными</button>
-            </div>
-            <button class="btn btn-outline w-full" style="margin-top:.5rem;" disabled>🎫 Продать билет</button>
-            <button class="btn btn-danger w-full" style="margin-top:1.25rem;" disabled>↩ Оформить возврат</button>
-        </aside>
+            </tbody>
+        </table>
     </div>
+</section>
 
-    <!-- Return -->
-    <div style="margin-top:2rem;">
-        <p class="eyebrow">Возврат</p>
-        <div class="panel" style="display:flex;gap:.75rem;padding:1rem;flex-wrap:wrap;align-items:center;">
-            <div style="flex:1;min-width:250px;position:relative;">
-                <input type="text" class="form-control" style="height:44px;padding-left:2.5rem;" placeholder="Штрихкод билета">
-            </div>
-            <button class="btn btn-outline" style="height:44px;">Проверить</button>
-            <button class="btn btn-danger" style="height:44px;" disabled>Вернуть</button>
-        </div>
+<div class="panel p-5 mt-6">
+    <div class="flex items-start gap-3 flex-wrap">
+        <span class="badge badge-gold">Как продать</span>
+        <ol class="text-sm text-muted" style="margin:0;padding-left:1.2rem;line-height:1.7;">
+            <li>Найдите сеанс в списке и нажмите «Продать билет».</li>
+            <li>Выберите от 1 до 6 свободных мест на схеме зала.</li>
+            <li>Оплатите: <b>Наличные</b> или <b>Карта</b> — билет с QR сразу напечатается.</li>
+        </ol>
     </div>
-</main>
-
-<style>
-@media(max-width:1100px){.cashier-grid{grid-template-columns:1fr!important}}
-</style>
+</div>
 {% endblock %}

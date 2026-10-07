@@ -3,37 +3,43 @@
 {% block title %}Выбор мест — Аврора{% endblock %}
 
 {% block content %}
-<main class="page-shell" style="padding:2.5rem 0 3.5rem;">
-    <div class="section-rule" style="margin-bottom:1.25rem;"></div>
+<main class="page-shell" style="padding-top:2rem;padding-bottom:4rem;">
+    <nav class="text-xs text-muted" style="margin-bottom:1.5rem;" aria-label="Хлебные крошки">
+        <a href="{% url 'home' %}">Афиша</a> <span style="opacity:.5">/</span>
+        <a href="{% url 'film' session.movie.id %}">{{ session.movie.title }}</a> <span style="opacity:.5">/</span> Выбор мест
+    </nav>
+
+    <div class="section-rule" style="margin-bottom:1rem;"></div>
     <p class="eyebrow">{{ session.movie.title }}</p>
-    <h1 style="font-family:'Bebas Neue',sans-serif;font-size:clamp(2.5rem,5vw,3.5rem);line-height:1;color:var(--text);margin:0;">ВЫБОР МЕСТ</h1>
-    <p style="margin:.5rem 0 0;font-size:.875rem;color:var(--text-muted);">
-        Сегодня, {{ session.time|time:"H:i" }} · Зал {{ session.hall.number }} · {{ session.hall.get_type_display }}
-    </p>
+    <div class="flex items-end justify-between gap-4 flex-wrap">
+        <div>
+            <h1 style="font-family:'Bebas Neue',sans-serif;font-size:clamp(2.4rem,5vw,3.4rem);line-height:1;color:var(--text);margin:0;">ВЫБОР МЕСТ</h1>
+            <p class="text-sm text-muted" style="margin:.5rem 0 0;">
+                {{ session.date|date:"d.m.Y" }}, {{ session.time|time:"H:i" }} · Зал {{ session.hall.number }} · {{ session.hall.get_type_display }}
+            </p>
+        </div>
+        <a href="{% url 'film' session.movie.id %}" class="btn btn-outline btn-sm">← К фильму</a>
+    </div>
 
-    <div style="display:grid;gap:2rem;grid-template-columns:1fr 340px;align-items:start;" class="booking-grid">
+    <div class="flex gap-6" style="align-items:flex-start;margin-top:2rem;flex-wrap:wrap;" id="bookingGrid">
         <!-- Hall -->
-        <section class="panel" style="overflow-x:auto;padding:1.25rem;">
-            <div style="min-width:540px;max-width:768px;margin:0 auto;">
-                <!-- Screen -->
-                <div class="screen-indicator">
-                    <span>ЭКРАН</span>
-                </div>
-
-                <!-- Seats -->
-                <div style="display:flex;flex-direction:column;gap:.75rem;">
+        <section class="panel p-5" style="flex:1;min-width:320px;overflow-x:auto;">
+            <div style="min-width:520px;max-width:720px;margin:0 auto;">
+                <div class="screen-indicator"><span>ЭКРАН</span></div>
+                <div class="seat-map">
                     {% for row_num, seats in seats_by_row.items %}
-                    <div style="display:flex;align-items:center;justify-content:center;gap:.5rem;">
-                        <span style="width:20px;text-align:right;font-size:.75rem;color:var(--text-muted);">{{ row_num }}</span>
+                    <div class="seat-row">
+                        <span class="seat-row-num">{{ row_num }}</span>
                         {% for seat in seats %}
                         <button type="button"
-                                class="seat {% if seat.is_booked %}seat-taken{% elif seat.category == 'vip' %}seat-vip{% endif %}"
+                                class="seat {{ seat.category }}{% if seat.is_booked %} seat-taken{% endif %}"
                                 data-id="{{ seat.id }}"
                                 data-price="{{ seat.price }}"
                                 data-row="{{ row_num }}"
                                 data-num="{{ seat.number }}"
+                                title="Ряд {{ row_num }}, место {{ seat.number }} — {{ seat.price }} ₽{% if seat.is_booked %} (занято){% endif %}"
                                 {% if seat.is_booked %}disabled{% endif %}
-                                aria-label="Ряд {{ row_num }}, место {{ seat.number }}">
+                                aria-label="Ряд {{ row_num }}, место {{ seat.number }}{% if seat.is_booked %}, занято{% endif %}">
                             {{ seat.number }}
                         </button>
                         {% endfor %}
@@ -41,93 +47,113 @@
                     {% endfor %}
                 </div>
 
-                <!-- Legend -->
                 <div class="seat-legend">
-                    <span class="seat-legend-item">
-                        <span class="seat-legend-icon"></span>Свободно
-                    </span>
-                    <span class="seat-legend-item" style="color:var(--primary);">
-                        <span class="seat-legend-icon" style="background:var(--primary);border-color:var(--primary);"></span>Выбрано
-                    </span>
-                    <span class="seat-legend-item" style="opacity:.4;">
-                        <span class="seat-legend-icon" style="opacity:.5;"></span>Занято
-                    </span>
-                    <span class="seat-legend-item" style="color:var(--gold);">
-                        <span class="seat-legend-icon" style="border-color:rgba(238,184,74,.7);"></span>VIP
-                    </span>
+                    <span class="seat-legend-item"><span class="seat-legend-icon"></span>Свободно</span>
+                    <span class="seat-legend-item" style="color:var(--accent-hover)"><span class="seat-legend-icon" style="background:var(--accent);border-color:var(--accent)"></span>Выбрано</span>
+                    <span class="seat-legend-item" style="opacity:.5"><span class="seat-legend-icon" style="opacity:.5"></span>Занято</span>
+                    <span class="seat-legend-item" style="color:var(--gold)"><span class="seat-legend-icon" style="border-color:var(--gold-45)"></span>Комфорт / VIP</span>
                 </div>
             </div>
         </section>
 
-        <!-- Order Panel -->
-        <aside class="panel" style="padding:1.25rem;position:sticky;top:76px;" class="order-panel">
+        <!-- Order panel -->
+        <aside class="panel p-5" style="width:min(360px,100%);position:sticky;top:calc(var(--header-h) + 1rem);">
             <p class="eyebrow">Ваш заказ</p>
-            <h2 style="font-family:'Bebas Neue',sans-serif;font-size:1.75rem;color:var(--text);margin:0;">{{ session.movie.title }}</h2>
+            <h2 style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--text);margin:0;">{{ session.movie.title }}</h2>
 
-            <div style="border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:1rem 0;margin-top:1.25rem;font-size:.875rem;color:var(--text-muted);">
-                <p style="margin:0;">Сегодня, {{ session.time|time:"H:i" }}</p>
-                <p style="margin:0;">Зал {{ session.hall.number }} · {{ session.hall.get_type_display }}</p>
+            <div class="border-t border-b" style="padding:1rem 0;margin-top:1.2rem;font-size:.875rem;color:var(--muted);">
+                <p style="margin:0;">{{ session.date|date:"d.m.Y" }}, {{ session.time|time:"H:i" }}</p>
+                <p style="margin:.25rem 0 0;">Зал {{ session.hall.number }} · {{ session.hall.get_type_display }}</p>
             </div>
 
-            <div id="selList" style="min-height:6rem;padding:1.25rem 0;">
-                <p style="font-size:.875rem;color:var(--text-muted);margin:0;">Выберите места на схеме</p>
+            <div id="selList" style="min-height:5rem;padding:1.25rem 0;">
+                <p class="text-sm text-muted" style="margin:0;">Выберите места на схеме — до 6</p>
             </div>
 
-            <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:1.25rem;">
+            <div class="summary-total">
                 <b>Итого</b>
-                <b style="font-size:1.25rem;" id="total">0 ₽</b>
+                <b id="total" style="font-size:1.3rem;color:var(--gold);">0 ₽</b>
             </div>
 
             <form method="post" action="{% url 'booking' session.id %}" id="bkForm" style="margin-top:1.25rem;">
                 {% csrf_token %}
                 <input type="hidden" name="seats" id="seatsInp" value="">
-                <button type="submit" class="btn btn-primary w-full" style="height:3rem;" disabled id="payBtn">Оплатить</button>
+                <button type="submit" class="btn btn-primary w-full" style="height:3rem;" disabled id="payBtn">Забронировать</button>
             </form>
-            <p style="text-align:center;font-size:.75rem;color:var(--text-muted);margin:.75rem 0 0;">Бронь удерживается 15 минут</p>
+            <p class="text-xs text-muted text-center" style="margin:.7rem 0 0;">Бронь удерживается 15 минут · после брони оплата в профиле</p>
         </aside>
     </div>
 </main>
 
-<style>
-@media(max-width:1100px){.booking-grid{grid-template-columns:1fr!important}.order-panel{position:static!important}}
-</style>
+<!-- Mobile sticky order bar -->
+<div class="book-sticky" id="bookSticky" aria-hidden="true">
+    <div class="bs-info">
+        <span class="bs-count" id="bsCount">0 мест</span>
+        <b id="bsTotal">0 ₽</b>
+    </div>
+    <button type="button" class="btn btn-primary" id="bsPay" disabled>Забронировать</button>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-(function(){
-    var seats=document.querySelectorAll('.seat:not(:disabled)');
-    var sel=new Set();
-    var list=document.getElementById('selList');
-    var total=document.getElementById('total');
-    var pay=document.getElementById('payBtn');
-    var inp=document.getElementById('seatsInp');
-    var max=8;
+(function () {
+    var seats = document.querySelectorAll('.seat:not(:disabled)');
+    var sel = new Set();
+    var list = document.getElementById('selList');
+    var total = document.getElementById('total');
+    var pay = document.getElementById('payBtn');
+    var inp = document.getElementById('seatsInp');
+    var max = Aurora.MAX_SEATS;
 
-    seats.forEach(function(s){
-        s.addEventListener('click',function(){
-            var id=this.dataset.id;
-            if(this.classList.contains('seat-selected')){this.classList.remove('seat-selected');sel.delete(id);}
-            else{
-                if(sel.size>=max){alert('Максимум '+max+' мест');return;}
-                this.classList.add('seat-selected');sel.add(id);
+    seats.forEach(function (s) {
+        s.addEventListener('click', function () {
+            var id = this.dataset.id;
+            if (this.classList.contains('seat-selected')) {
+                this.classList.remove('seat-selected');
+                sel.delete(id);
+            } else {
+                if (sel.size >= max) {
+                    Aurora.toast('Максимум ' + max + ' мест за бронирование', 'error');
+                    return;
+                }
+                this.classList.add('seat-selected');
+                sel.add(id);
             }
             upd();
         });
     });
 
-    function upd(){
-        var t=0,h='';
-        sel.forEach(function(id){
-            var el=document.querySelector('.seat[data-id="'+id+'"]');
-            var r=el.dataset.row,n=el.dataset.num,p=parseFloat(el.dataset.price);
-            t+=p;
-            h+='<div style="display:flex;justify-content:space-between;font-size:.875rem;padding:.5rem 0;"><span>Ряд '+r+', место '+n+'</span><span>'+p+' ₽</span></div>';
+    function upd() {
+        var t = 0, html = '';
+        sel.forEach(function (id) {
+            var el = document.querySelector('.seat[data-id="' + id + '"]');
+            var r = el.dataset.row, n = el.dataset.num, p = parseFloat(el.dataset.price);
+            t += p;
+            html += '<div class="summary-row"><span class="sum-place">Ряд ' + r + ', место ' + n +
+                '</span><span class="sum-price">' + Aurora.formatPrice(p) + '</span></div>';
         });
-        list.innerHTML=sel.size?h:'<p style="font-size:.875rem;color:var(--text-muted);margin:0;">Выберите места на схеме</p>';
-        total.textContent=t.toLocaleString('ru-RU')+' ₽';
-        pay.disabled=!sel.size;
-        inp.value=Array.from(sel).join(',');
+        list.innerHTML = sel.size ? html :
+            '<p class="text-sm text-muted" style="margin:0;">Выберите места на схеме — до ' + max + '</p>';
+        total.textContent = Aurora.formatPrice(t);
+        pay.disabled = !sel.size;
+        pay.textContent = sel.size ? 'Забронировать · ' + Aurora.formatPrice(t) : 'Забронировать';
+        inp.value = Array.from(sel).join(',');
+
+        var sticky = document.getElementById('bookSticky');
+        if (sticky) {
+            document.getElementById('bsCount').textContent =
+                sel.size ? (sel.size + ' ' + (sel.size === 1 ? 'место' : (sel.size < 5 ? 'места' : 'мест'))) : '0 мест';
+            document.getElementById('bsTotal').textContent = Aurora.formatPrice(t);
+            document.getElementById('bsPay').disabled = !sel.size;
+            sticky.classList.toggle('visible', sel.size > 0);
+            sticky.setAttribute('aria-hidden', sel.size > 0 ? 'false' : 'true');
+        }
+    }
+
+    var bsPay = document.getElementById('bsPay');
+    if (bsPay) {
+        bsPay.addEventListener('click', function () { pay.click(); });
     }
 })();
 </script>

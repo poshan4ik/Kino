@@ -1,0 +1,58 @@
+{% extends 'staff_base.html' %}
+{% load static %}
+{% block title %}Билеты — Управление{% endblock %}
+
+{% block staff_content %}
+<div class="staff-topline">
+    <div>
+        <p class="eyebrow">Операции</p>
+        <h1 class="staff-title">БИЛЕТЫ</h1>
+        <p class="staff-sub">{{ tickets|length }} билетов · поиск по штрихкоду и зрителю</p>
+    </div>
+</div>
+
+<div class="staff-toolbar">
+    <input type="search" class="form-control" placeholder="Штрихкод, зритель, фильм…" data-table-search="#ticketsTable" aria-label="Поиск билетов" style="max-width:22rem;">
+    <select class="form-control" style="max-width:13rem;" data-filter-select="status" aria-label="Фильтр по статусу">
+        <option value="">Все статусы</option>
+        {% for value, label in status_choices %}
+        <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <span class="spacer"></span>
+    <a href="{% url 'staff_bookings' %}" class="btn btn-outline btn-sm">К броням</a>
+</div>
+
+<section class="panel" style="overflow:hidden;">
+    <div class="table-wrap" style="border:none;">
+        <table class="table" id="ticketsTable">
+            <thead>
+                <tr><th>Штрихкод</th><th>Фильм</th><th>Сеанс</th><th>Место</th><th>Зритель</th><th>Цена</th><th>Статус</th></tr>
+            </thead>
+            <tbody>
+                {% for t in tickets %}
+                <tr>
+                    <td>
+                        <b style="font-family:monospace;font-size:.78rem;">{{ t.barcode }}</b>
+                        <div class="text-xs text-muted">выдан {{ t.issued_at|date:"d.m.y H:i" }}</div>
+                    </td>
+                    <td>{{ t.booking.session.movie.title }}</td>
+                    <td class="text-xs">{{ t.booking.session.date|date:"d.m.Y" }} {{ t.booking.session.time|time:"H:i" }}<div class="text-muted">Зал {{ t.booking.session.hall.number }}</div></td>
+                    <td>Ряд {{ t.booking.seat.row }}, № {{ t.booking.seat.number }}</td>
+                    <td class="text-xs">{{ t.booking.client.get_full_name|default:t.booking.client.username }}</td>
+                    <td><b>{{ t.price|floatformat:0 }} ₽</b></td>
+                    <td>
+                        <span class="badge {% if t.status == 'active' %}badge-green{% elif t.status == 'used' %}badge-status-used{% else %}badge-status-cancelled{% endif %}">
+                            {{ t.get_status_display }}
+                        </span>
+                        {% if t.used_at %}<div class="text-xs text-muted">вход: {{ t.used_at|date:"d.m H:i" }}</div>{% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7"><div class="empty-state" style="border:none;"><h3>Билетов нет</h3><p>По выбранному фильтру записей не найдено.</p></div></td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

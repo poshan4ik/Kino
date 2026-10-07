@@ -1,0 +1,60 @@
+{% extends 'staff_base.html' %}
+{% load static %}
+{% block title %}Продажи — Управление{% endblock %}
+
+{% block staff_content %}
+<div class="staff-topline">
+    <div>
+        <p class="eyebrow">Финансы</p>
+        <h1 class="staff-title">ПРОДАЖИ</h1>
+        <p class="staff-sub">завершённые платежи · выручка и способы оплаты</p>
+    </div>
+    <a href="{% url 'staff_reports' %}" class="btn btn-outline btn-sm">Отчёты</a>
+</div>
+
+<div class="grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;">
+    <div class="kpi-card">
+        <span class="kpi-label">Выручка сегодня</span>
+        <span class="kpi-value gold">{{ sales_today|floatformat:0 }} ₽</span>
+        <span class="kpi-note">по завершённым платежам</span>
+    </div>
+    <div class="kpi-card">
+        <span class="kpi-label">Билетов сегодня</span>
+        <span class="kpi-value">{{ tickets_today }}</span>
+        <span class="kpi-note">выдано и активировано</span>
+    </div>
+</div>
+
+<div class="staff-toolbar">
+    <input type="search" class="form-control" placeholder="Поиск: зритель, фильм…" data-table-search="#salesTable" aria-label="Поиск платежей" style="max-width:24rem;">
+    <span class="spacer"></span>
+    <span class="text-xs text-muted">показаны последние {{ payments|length }}</span>
+</div>
+
+<section class="panel" style="overflow:hidden;">
+    <div class="table-wrap" style="border:none;">
+        <table class="table" id="salesTable">
+            <thead>
+                <tr><th>Дата</th><th>Фильм</th><th>Зритель</th><th>Способ</th><th>Транзакция</th><th style="text-align:right;">Сумма</th></tr>
+            </thead>
+            <tbody>
+                {% for p in payments %}
+                <tr>
+                    <td class="text-xs text-muted">{{ p.completed_at|date:"d.m.Y H:i" }}</td>
+                    <td>
+                        <b>{{ p.ticket.booking.session.movie.title }}</b>
+                        <div class="text-xs text-muted">{{ p.ticket.booking.session.date|date:"d.m" }} {{ p.ticket.booking.session.time|time:"H:i" }} · Ряд {{ p.ticket.booking.seat.row }}, № {{ p.ticket.booking.seat.number }}</div>
+                    </td>
+                    <td class="text-xs">{{ p.ticket.booking.client.get_full_name|default:p.ticket.booking.client.username }}</td>
+                    <td><span class="badge">{{ p.get_method_display }}</span></td>
+                    <td class="text-xs text-muted" style="font-family:monospace;">{{ p.transaction_id|default:"—" }}</td>
+                    <td style="text-align:right;"><b>{{ p.amount|floatformat:0 }} ₽</b></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6"><div class="empty-state" style="border:none;"><h3>Продаж пока нет</h3><p>Завершённые платежи появятся здесь автоматически.</p></div></td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

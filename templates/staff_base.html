@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="staff-layout">
+    <aside class="staff-sidebar" aria-label="Разделы управления">
+        <span class="staff-side-label">Рабочее место</span>
+        {% if staff_role == 'manager' or staff_role == 'admin' %}
+        <a href="{% url 'manager' %}" class="staff-nav-link {% if staff_section == 'dashboard' %}active{% endif %}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+            Сводка
+        </a>
+        {% endif %}
+        {% if user.role in 'cashier,manager,admin' %}
+        <a href="{% url 'cashier' %}" class="staff-nav-link {% if staff_section == 'cashier' %}active{% endif %}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>
+            Касса
+        </a>
+        {% endif %}
+        {% if user.role in 'controller,manager,admin' %}
+        <a href="{% url 'controller' %}" class="staff-nav-link {% if staff_section == 'controller' %}active{% endif %}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 5v14"/><path d="M7 5v14"/><path d="M11 5v14"/><path d="M15 5v14"/><path d="M19 5v14"/></svg>
+            Контроль
+        </a>
+        {% endif %}
+
+        <div class="staff-sep"></div>
+        <span class="staff-side-label">Операции</span>
+
+        <a href="{% url 'staff_bookings' %}" class="staff-nav-link {% if staff_section == 'bookings' %}active{% endif %}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-6"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="11" x2="12" y2="21"/></svg>
+            Брони
+        </a>
+        <a href="{% url 'staff_tickets' %}" class="staff-nav-link {% if staff_section == 'tickets' %}active{% endif %}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z"/></svg>
+            Билеты
+        </a>
+        {% if user.role in 'cashier,manager,admin' %}
+        <a href="{% url 'staff_clients' %}" class="staff-nav-link {% if staff_section == 'clients' %}active{% endif %}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Клиенты
+        </a>
+        <a href="{% url 'staff_sales' %}" class="staff-nav-link {% if staff_section == 'sales' %}active{% endif %}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            Продажи
+        </a>
+        {% endif %}
+
+        {% if staff_role == 'manager' or staff_role == 'admin' %}
+        <div class="staff-sep"></div>
+        <span class="staff-side-label">Справочники</span>
+        <a href="{% url 'staff_movies' %}" class="staff-nav-link {% if staff_section == 'movies' %}active{% endif %}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+            Фильмы
+        </a>
+        <a href="{% url 'staff_sessions' %}" class="staff-nav-link {% if staff_section == 'sessions' %}active{% endif %}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Сеансы
+        </a>
+        <a href="{% url 'staff_halls' %}" class="staff-nav-link {% if staff_section == 'halls' %}active{% endif %}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/></svg>
+            Залы
+        </a>
+        <a href="{% url 'staff_reports' %}" class="staff-nav-link {% if staff_section == 'reports' %}active{% endif %}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            Отчёты
+        </a>
+        <a href="{% url 'staff_users' %}" class="staff-nav-link {% if staff_section == 'users' %}active{% endif %}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Пользователи
+        </a>
+        {% endif %}
+    </aside>
+
+    <div class="staff-main">
+        {% block staff_content %}{% endblock %}
+    </div>
+</div>
+{% endblock %}

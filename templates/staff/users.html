@@ -1,0 +1,124 @@
+{% extends 'staff_base.html' %}
+{% load static %}
+{% block title %}Пользователи — Управление{% endblock %}
+
+{% block staff_content %}
+<div class="staff-topline">
+    <div>
+        <p class="eyebrow">Справочники</p>
+        <h1 class="staff-title">ПОЛЬЗОВАТЕЛИ</h1>
+        <p class="staff-sub">{{ staff_users|length }} аккаунтов · роли и доступ</p>
+    </div>
+    <button type="button" class="btn btn-primary btn-sm" data-modal-open="#userModal" data-title="Новый пользователь">
+        + Добавить пользователя
+    </button>
+</div>
+
+<div class="staff-toolbar">
+    <input type="search" class="form-control" placeholder="Поиск: логин, имя, email…" data-table-search="#usersTable" aria-label="Поиск пользователей" style="max-width:24rem;">
+    <span class="spacer"></span>
+    <span class="text-xs text-muted">роль меняется прямо в таблице</span>
+</div>
+
+<section class="panel" style="overflow:hidden;">
+    <div class="table-wrap" style="border:none;">
+        <table class="table" id="usersTable">
+            <thead>
+                <tr><th>Пользователь</th><th>Email</th><th>Роль</th><th>Активен</th><th>Регистрация</th><th></th></tr>
+            </thead>
+            <tbody>
+                {% for u in staff_users %}
+                <tr>
+                    <td>
+                        <b>{{ u.get_full_name|default:u.username }}</b>
+                        <div class="text-xs text-muted">@{{ u.username }}</div>
+                    </td>
+                    <td class="text-xs">{{ u.email|default:"—" }}</td>
+                    <td>
+                        <select class="form-control" style="max-width:11rem;padding:.35rem .5rem;font-size:.78rem;"
+                                data-role-select data-url="/api/users/{{ u.id }}/"
+                                aria-label="Роль пользователя {{ u.username }}">
+                            {% for value, label in role_choices %}
+                            <option value="{{ value }}" {% if u.role == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td>
+                        <button type="button" class="badge {% if u.is_active %}badge-green{% else %}badge-status-cancelled{% endif %}"
+                                style="cursor:pointer;border:1px solid;"
+                                data-toggle-field="is_active" data-value="{{ u.is_active|yesno:'true,false' }}"
+                                data-url="/api/users/{{ u.id }}/"
+                                title="Нажмите, чтобы переключить">
+                            {% if u.is_active %}Да{% else %}Нет{% endif %}
+                        </button>
+                    </td>
+                    <td class="text-xs text-muted">{{ u.date_joined|date:"d.m.Y" }}</td>
+                    <td>
+                        <div class="row-actions">
+                            {% if u.id != user.id %}
+                            <button type="button" class="btn btn-outline"
+                                    data-api-delete data-url="/api/users/{{ u.id }}/"
+                                    data-confirm="Удалить пользователя {{ u.username }}? Все его брони останутся в системе.">✕</button>
+                            {% else %}
+                            <span class="text-xs text-muted">это вы</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6"><div class="empty-state" style="border:none;"><h3>Пользователей нет</h3><p>Создайте первый аккаунт.</p></div></td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<div class="modal-overlay" id="userModal">
+    <div class="modal-card form-card">
+        <h3 data-form-title>Новый пользователь</h3>
+        <form class="staff-form" data-crud data-url="/api/users/" data-method="POST" data-success="Пользователь создан">
+            <div class="grid-2">
+                <label class="field"><span class="field-label">Логин *</span>
+                    <input type="text" class="form-control" name="username" required maxlength="150"></label>
+                <label class="field"><span class="field-label">Пароль *</span>
+                    <input type="text" class="form-control" name="password" required minlength="8" placeholder="Минимум 8 символов"></label>
+            </div>
+            <div class="grid-2">
+                <label class="field"><span class="field-label">Имя</span>
+                    <input type="text" class="form-control" name="first_name"></label>
+                <label class="field"><span class="field-label">Фамилия</span>
+                    <input type="text" class="form-control" name="last_name"></label>
+            </div>
+            <div class="grid-2">
+                <label class="field"><span class="field-label">Email</span>
+                    <input type="email" class="form-control" name="email"></label>
+                <label class="field"><span class="field-label">Телефон</span>
+                    <input type="text" class="form-control" name="phone"></label>
+            </div>
+            <label class="field"><span class="field-label">Роль *</span>
+                <select class="form-control" name="role">
+                    {% for value, label in role_choices %}
+                    <option value="{{ value }}" {% if value == 'client' %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select></label>
+            <div class="form-actions">
+                <button type="button" class="btn btn-outline" data-modal-close>Отмена</button>
+                <button type="submit" class="btn btn-primary">Создать</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('change', function (e) {
+  var sel = e.target.closest('[data-role-select]');
+  if (!sel) return;
+  var value = sel.value;
+  sel.disabled = true;
+  Aurora.api('PATCH', sel.getAttribute('data-url'), { role: value })
+    .then(function () { Aurora.toast('Роль обновлена', 'success'); })
+    .catch(function (err) { Aurora.toast(err.message || 'Не удалось изменить роль', 'error'); })
+    .then(function () { sel.disabled = false; });
+});
+</script>
+{% endblock %}

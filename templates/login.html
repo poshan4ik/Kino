@@ -3,12 +3,16 @@
 {% block title %}Вход — Аврора{% endblock %}
 
 {% block content %}
-<main class="auth-shell" style="min-height:calc(100vh - 56px);display:flex;align-items:center;justify-content:center;padding:3rem 1rem;">
-    <div class="panel" style="width:100%;max-width:26rem;padding:2.5rem;">
+<main class="auth-shell">
+    <div class="auth-card fade-in">
+        <div class="flex items-center gap-2" style="margin-bottom:1.4rem;">
+            <span class="brand-mark"><span></span></span>
+            <span class="brand-text">АВРОРА</span>
+        </div>
         <p class="eyebrow">С возвращением</p>
-        <h1 style="font-family:'Bebas Neue',sans-serif;font-size:2.5rem;line-height:1;color:var(--text);margin:0;">ВХОД</h1>
+        <h1 style="font-family:'Bebas Neue',sans-serif;font-size:2.6rem;line-height:1;color:var(--text);margin:0;">ВХОД</h1>
 
-        <form method="post" action="{% url 'login' %}" style="display:grid;gap:1.25rem;margin-top:2rem;">
+        <form method="post" action="{% url 'login' %}" style="display:grid;gap:1.1rem;margin-top:1.8rem;">
             {% csrf_token %}
             {% if form.non_field_errors %}
             <div class="alert alert-error">{{ form.non_field_errors }}</div>
@@ -24,11 +28,11 @@
                 {{ form.password }}
             </label>
 
-            <button type="submit" class="btn btn-primary" style="height:3rem;border-radius:999px;">Войти</button>
+            <button type="submit" class="btn btn-primary" style="height:3rem;margin-top:.4rem;">Войти</button>
         </form>
 
-        <p style="text-align:center;font-size:.875rem;color:var(--text-muted);margin-top:1.5rem;">
-            Нет аккаунта? <a href="{% url 'register' %}" style="color:var(--primary);">Зарегистрироваться</a>
+        <p class="text-sm text-muted" style="text-align:center;margin-top:1.4rem;">
+            Нет аккаунта? <a href="{% url 'register' %}">Зарегистрироваться</a>
         </p>
     </div>
 </main>
