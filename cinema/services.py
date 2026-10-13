@@ -10,9 +10,15 @@ from django.db import transaction, connection
 from django.db.utils import IntegrityError
 from django.utils import timezone
 
-from .models import Booking, Payment, Session, Seat, Ticket, log_audit
+from .models import (
+    Booking, BookingStatus, Payment, PaymentStatus,
+    Session, Seat, Ticket, TicketStatus, log_audit,
+)
 
-ACTIVE_BOOKING_STATUSES = ['created', 'pending_payment', 'paid', 'used']
+ACTIVE_BOOKING_STATUSES = [
+    BookingStatus.CREATED, BookingStatus.PENDING_PAYMENT,
+    BookingStatus.PAID, BookingStatus.USED,
+]
 
 
 class BookingError(Exception):
@@ -118,14 +124,12 @@ def refund_booking(booking, actor):
 
         if hasattr(booking, 'ticket'):
             ticket = booking.ticket
-            ticket.status = 'refunded'
-            ticket.save(update_fields=['status'])
-            Payment.objects.filter(ticket=ticket).exclude(
-                status='refunded'
-            ).update(status='refunded')
+            ticket.set_status(TicketStatus.REFUNDED)
+            Payment.objects.filter(ticket=ticket, status__in=[
+                PaymentStatus.PENDING, PaymentStatus.COMPLETED,
+            ]).update(status=PaymentStatus.REFUNDED)
 
-        booking.status = 'cancelled'
-        booking.save(update_fields=['status'])
+        booking.set_status(BookingStatus.CANCELLED)
 
     log_audit(
         actor, 'refund_booking',
@@ -150,13 +154,11 @@ def cancel_booking(booking, actor, force=False):
             raise BookingError('Нельзя отменить это бронирование')
         if hasattr(booking, 'ticket'):
             ticket = booking.ticket
-            ticket.status = 'cancelled'
-            ticket.save(update_fields=['status'])
-            Payment.objects.filter(ticket=ticket, status='pending').update(
-                status='failed'
-            )
-        booking.status = 'cancelled'
-        booking.save(update_fields=['status'])
+            ticket.set_status(TicketStatus.CANCELLED)
+            Payment.objects.filter(
+                ticket=ticket, status=PaymentStatus.PENDING,
+            ).update(status=PaymentStatus.FAILED)
+        booking.set_status(BookingStatus.CANCELLED)
 
     log_audit(
         actor, 'cancel_booking',

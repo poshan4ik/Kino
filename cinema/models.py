@@ -1,7 +1,104 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
+
+
+class BookingStatus(models.TextChoices):
+    CREATED = 'created', 'Создано'
+    PENDING_PAYMENT = 'pending_payment', 'Ожидает оплаты'
+    PAID = 'paid', 'Оплачено'
+    USED = 'used', 'Использовано'
+    CANCELLED = 'cancelled', 'Отменено'
+    EXPIRED = 'expired', 'Просрочено'
+
+
+class TicketStatus(models.TextChoices):
+    ACTIVE = 'active', 'Активен'
+    USED = 'used', 'Использован'
+    REFUNDED = 'refunded', 'Возвращён'
+    CANCELLED = 'cancelled', 'Аннулирован'
+
+
+class PaymentStatus(models.TextChoices):
+    PENDING = 'pending', 'Ожидает'
+    COMPLETED = 'completed', 'Завершён'
+    FAILED = 'failed', 'Неудача'
+    REFUNDED = 'refunded', 'Возвращён'
+
+
+# Единое место правил переходов статусов:
+# pending → paid → used; pending → cancelled/expired; paid → refunded
+# (по брони возврат = cancelled, по билету/платежу = refunded).
+STATUS_TRANSITIONS = {
+    'booking': {
+        BookingStatus.CREATED.value: {
+            BookingStatus.PENDING_PAYMENT.value,
+            BookingStatus.PAID.value,
+            BookingStatus.CANCELLED.value,
+        },
+        BookingStatus.PENDING_PAYMENT.value: {
+            BookingStatus.PAID.value,
+            BookingStatus.CANCELLED.value,
+            BookingStatus.EXPIRED.value,
+        },
+        BookingStatus.PAID.value: {
+            BookingStatus.USED.value,
+            BookingStatus.CANCELLED.value,  # возврат
+        },
+        BookingStatus.USED.value: set(),
+        BookingStatus.CANCELLED.value: set(),
+        BookingStatus.EXPIRED.value: set(),
+    },
+    'ticket': {
+        TicketStatus.ACTIVE.value: {
+            TicketStatus.USED.value,
+            TicketStatus.REFUNDED.value,
+            TicketStatus.CANCELLED.value,
+        },
+        TicketStatus.USED.value: set(),
+        TicketStatus.REFUNDED.value: set(),
+        TicketStatus.CANCELLED.value: set(),
+    },
+    'payment': {
+        PaymentStatus.PENDING.value: {
+            PaymentStatus.COMPLETED.value,
+            PaymentStatus.FAILED.value,
+            PaymentStatus.REFUNDED.value,
+        },
+        PaymentStatus.COMPLETED.value: {PaymentStatus.REFUNDED.value},
+        PaymentStatus.FAILED.value: set(),
+        PaymentStatus.REFUNDED.value: set(),
+    },
+}
+
+
+class StatusTransitionMixin:
+    """Проверка допустимых переходов статуса по таблице STATUS_TRANSITIONS."""
+
+    status_kind = None
+
+    def get_allowed_transitions(self):
+        return STATUS_TRANSITIONS.get(self.status_kind, {}).get(self.status, set())
+
+    def can_set_status(self, new_status):
+        return new_status in self.get_allowed_transitions()
+
+    def check_status_transition(self, new_status):
+        if not self.can_set_status(new_status):
+            raise ValidationError(
+                f'Недопустимый переход статуса ({self.status_kind}): '
+                f'{self.status} → {new_status}'
+            )
+        return new_status
+
+    def set_status(self, new_status, update_fields=('status',)):
+        self.check_status_transition(new_status)
+        self.status = new_status
+        if self.pk:
+            self.save(update_fields=list(update_fields))
+        return self
 
 
 class User(AbstractUser):
@@ -177,6 +274,11 @@ class Session(models.Model):
     hall = models.ForeignKey(Hall, on_delete=models.CASCADE, related_name='sessions', verbose_name='Зал')
     date = models.DateField(verbose_name='Дата')
     time = models.TimeField(verbose_name='Время')
+    duration_min = models.PositiveIntegerField(
+        null=True, blank=True, validators=[MinValueValidator(1)],
+        verbose_name='Длительность сеанса (мин)',
+        help_text='Снимок длительности фильма на момент создания сеанса'
+    )
     price_standard = models.DecimalField(max_digits=8, decimal_places=2, default=300, verbose_name='Цена (Стандарт)')
     price_comfort = models.DecimalField(max_digits=8, decimal_places=2, default=450, verbose_name='Цена (Комфорт)')
     price_vip = models.DecimalField(max_digits=8, decimal_places=2, default=700, verbose_name='Цена (VIP)')
@@ -190,6 +292,7 @@ class Session(models.Model):
         indexes = [
             models.Index(fields=['date', 'time'], name='idx_session_date_time'),
             models.Index(fields=['is_active', 'date'], name='idx_session_active_date'),
+            models.Index(fields=['movie', 'date'], name='idx_session_movie_date'),
         ]
         constraints = [
             models.UniqueConstraint(fields=['hall', 'date', 'time'], name='unique_session_in_hall'),
@@ -199,19 +302,26 @@ class Session(models.Model):
                 & models.Q(price_vip__gte=0),
                 name='session_prices_nonnegative',
             ),
+            models.CheckConstraint(
+                check=models.Q(duration_min__gte=1),
+                name='session_end_after_start',
+            ),
         ]
     
     def __str__(self):
         return f'{self.movie} - {self.date} {self.time} ({self.hall})'
     
+    def get_duration_min(self):
+        return self.duration_min or (self.movie.duration if self.movie_id else 0)
+    
     def clean(self):
-        from django.core.exceptions import ValidationError
         from django.conf import settings
         if self.date and self.time:
             from datetime import datetime, timedelta
             buffer = getattr(settings, 'SESSION_BUFFER_MINUTES', 20)
+            duration = self.get_duration_min()
             session_start = datetime.combine(self.date, self.time)
-            session_end = session_start + timedelta(minutes=self.movie.duration + buffer)
+            session_end = session_start + timedelta(minutes=duration + buffer)
 
             overlapping = Session.objects.filter(
                 hall=self.hall,
@@ -221,13 +331,15 @@ class Session(models.Model):
 
             for other in overlapping:
                 other_start = datetime.combine(other.date, other.time)
-                other_end = other_start + timedelta(minutes=other.movie.duration + buffer)
+                other_end = other_start + timedelta(minutes=other.get_duration_min() + buffer)
 
                 # Конец одного сеанса может совпадать с началом следующего
                 if session_start < other_end and session_end > other_start:
                     raise ValidationError('Сеансы в этом зале пересекаются по времени')
     
     def save(self, *args, **kwargs):
+        if self.duration_min is None and self.movie_id:
+            self.duration_min = self.movie.duration
         self.clean()
         super().save(*args, **kwargs)
     
@@ -242,25 +354,22 @@ class Session(models.Model):
     def get_available_seats(self):
         booked_seat_ids = Booking.objects.filter(
             session=self,
-            status__in=['created', 'pending_payment', 'paid', 'used']
+            status__in=[
+                BookingStatus.CREATED, BookingStatus.PENDING_PAYMENT,
+                BookingStatus.PAID, BookingStatus.USED,
+            ]
         ).values_list('seat_id', flat=True)
         return self.hall.seats.exclude(id__in=booked_seat_ids)
 
 
-class Booking(models.Model):
-    STATUS_CHOICES = [
-        ('created', 'Создано'),
-        ('pending_payment', 'Ожидает оплаты'),
-        ('paid', 'Оплачено'),
-        ('used', 'Использовано'),
-        ('cancelled', 'Отменено'),
-        ('expired', 'Просрочено'),
-    ]
+class Booking(StatusTransitionMixin, models.Model):
+    STATUS_CHOICES = BookingStatus.choices
+    status_kind = 'booking'
     
     client = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bookings', verbose_name='Клиент')
     session = models.ForeignKey(Session, on_delete=models.CASCADE, related_name='bookings', verbose_name='Сеанс')
     seat = models.ForeignKey(Seat, on_delete=models.CASCADE, related_name='bookings', verbose_name='Место')
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='created', verbose_name='Статус')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=BookingStatus.CREATED, verbose_name='Статус')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
     expires_at = models.DateTimeField(null=True, blank=True, verbose_name='Истекает')
     
@@ -289,23 +398,18 @@ class Booking(models.Model):
         return False
     
     def expire(self):
-        if self.status in ['created', 'pending_payment']:
-            self.status = 'expired'
-            self.save(update_fields=['status'])
+        if self.status in [BookingStatus.CREATED, BookingStatus.PENDING_PAYMENT]:
+            self.set_status(BookingStatus.EXPIRED)
 
 
-class Ticket(models.Model):
-    STATUS_CHOICES = [
-        ('active', 'Активен'),
-        ('used', 'Использован'),
-        ('refunded', 'Возвращён'),
-        ('cancelled', 'Аннулирован'),
-    ]
+class Ticket(StatusTransitionMixin, models.Model):
+    STATUS_CHOICES = TicketStatus.choices
+    status_kind = 'ticket'
     
     booking = models.OneToOneField(Booking, on_delete=models.CASCADE, related_name='ticket', verbose_name='Бронирование')
     price = models.DecimalField(max_digits=8, decimal_places=2, verbose_name='Цена')
     barcode = models.CharField(max_length=64, unique=True, verbose_name='Штрихкод')
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active', verbose_name='Статус')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=TicketStatus.ACTIVE, verbose_name='Статус')
     issued_at = models.DateTimeField(auto_now_add=True, verbose_name='Выдан')
     used_at = models.DateTimeField(null=True, blank=True, verbose_name='Использован')
     
@@ -327,31 +431,26 @@ class Ticket(models.Model):
         return f'Билет #{self.barcode} ({self.get_status_display()})'
     
     def mark_used(self):
-        self.status = 'used'
         self.used_at = timezone.now()
-        self.save(update_fields=['status', 'used_at'])
-        self.booking.status = 'used'
-        self.booking.save(update_fields=['status'])
+        self.set_status(TicketStatus.USED, update_fields=('status', 'used_at'))
+        if self.booking.can_set_status(BookingStatus.USED):
+            self.booking.set_status(BookingStatus.USED)
 
 
-class Payment(models.Model):
+class Payment(StatusTransitionMixin, models.Model):
     METHOD_CHOICES = [
         ('cash', 'Наличные'),
         ('card', 'Карта'),
         ('online', 'Онлайн'),
     ]
     
-    STATUS_CHOICES = [
-        ('pending', 'Ожидает'),
-        ('completed', 'Завершён'),
-        ('failed', 'Неудача'),
-        ('refunded', 'Возвращён'),
-    ]
+    STATUS_CHOICES = PaymentStatus.choices
+    status_kind = 'payment'
     
     ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name='payments', verbose_name='Билет')
     amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Сумма')
     method = models.CharField(max_length=20, choices=METHOD_CHOICES, verbose_name='Способ оплаты')
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name='Статус')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=PaymentStatus.PENDING, verbose_name='Статус')
     transaction_id = models.CharField(max_length=100, blank=True, verbose_name='ID транзакции')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата')
     completed_at = models.DateTimeField(null=True, blank=True, verbose_name='Завершён')
