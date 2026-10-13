@@ -27,7 +27,7 @@ from .serializers import (
 )
 from .permissions import (
     IsAdminOrManager, IsCashierOrAbove, IsCashierRole, IsControllerOrAbove,
-    IsOwnerOrStaff, PublicReadOnly
+    IsOwnerOrStaff
 )
 
 
@@ -83,7 +83,7 @@ class GenreViewSet(viewsets.ModelViewSet):
     
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
-            return [PublicReadOnly()]
+            return [AllowAny()]
         return [IsAdminOrManager()]
 
 
@@ -116,10 +116,10 @@ class MovieViewSet(viewsets.ModelViewSet):
     
     def get_permissions(self):
         if self.action in ['list', 'retrieve', 'sessions']:
-            return [PublicReadOnly()]
+            return [AllowAny()]
         return [IsAdminOrManager()]
 
-    @action(detail=True, methods=['get'], permission_classes=[PublicReadOnly])
+    @action(detail=True, methods=['get'], permission_classes=[AllowAny])
     def sessions(self, request, pk=None):
         movie = self.get_object()
         sessions = movie.sessions.filter(
@@ -139,7 +139,7 @@ class HallViewSet(viewsets.ModelViewSet):
     
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
-            return [PublicReadOnly()]
+            return [AllowAny()]
         return [IsAdminOrManager()]
     
     @action(detail=True, methods=['post'], permission_classes=[IsAdminOrManager])
@@ -158,7 +158,7 @@ class SeatViewSet(viewsets.ModelViewSet):
     
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
-            return [PublicReadOnly()]
+            return [AllowAny()]
         return [IsAdminOrManager()]
 
 
@@ -176,7 +176,7 @@ class SessionViewSet(viewsets.ModelViewSet):
     
     def get_permissions(self):
         if self.action in ['list', 'retrieve', 'by_date', 'seats']:
-            return [PublicReadOnly()]
+            return [AllowAny()]
         return [IsAdminOrManager()]
     
     def get_queryset(self):
@@ -190,14 +190,14 @@ class SessionViewSet(viewsets.ModelViewSet):
                 queryset = queryset.filter(date__lte=date_to)
         return queryset
     
-    @action(detail=False, methods=['get'], permission_classes=[PublicReadOnly])
+    @action(detail=False, methods=['get'], permission_classes=[AllowAny])
     def by_date(self, request):
         target_date = request.query_params.get('date', timezone.localdate().isoformat())
         sessions = self.get_queryset().filter(date=target_date, is_active=True).order_by('time')
         serializer = self.get_serializer(sessions, many=True)
         return Response(serializer.data)
     
-    @action(detail=True, methods=['get'], permission_classes=[PublicReadOnly])
+    @action(detail=True, methods=['get'], permission_classes=[AllowAny])
     def seats(self, request, pk=None):
         session = self.get_object()
         seats = session.hall.seats.all().order_by('row', 'number')
@@ -222,8 +222,9 @@ class SessionViewSet(viewsets.ModelViewSet):
 
 class BookingViewSet(viewsets.ModelViewSet):
     queryset = Booking.objects.select_related('client', 'session', 'session__movie', 'session__hall', 'seat', 'ticket').all()
-    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'session', 'client']
+    search_fields = ['session__movie__title', 'client__username', 'seat__row']
     ordering_fields = ['created_at', 'status']
     
     def get_serializer_class(self):

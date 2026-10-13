@@ -389,7 +389,7 @@ class HoldFlowTests(CinemaFixture):
         resp = api.post('/api/bookings/hold/', {
             'session': self.session.id, 'seats': [self.seat1.id, self.seat2.id],
         }, format='json')
-        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.status_code, 409)
         self.assertFalse(
             Booking.objects.filter(session=self.session, seat=self.seat2).exists()
         )

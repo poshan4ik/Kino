@@ -182,6 +182,7 @@ REST_FRAMEWORK = {
         'auth': '10/min',
     },
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'EXCEPTION_HANDLER': 'cinema.exceptions.api_exception_handler',
 }
 
 SPECTACULAR_SETTINGS = {

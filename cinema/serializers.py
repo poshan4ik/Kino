@@ -222,7 +222,7 @@ class BookingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Booking
         fields = ['id', 'client', 'client_name', 'client_username', 'session', 'session_info', 'seat', 'seat_info', 'status', 'created_at', 'expires_at', 'ticket']
-        read_only_fields = ['id', 'client', 'created_at', 'expires_at']
+        read_only_fields = ['id', 'client', 'session', 'seat', 'status', 'created_at', 'expires_at']
     
     @extend_schema_field({'type': 'object', 'nullable': True})
     def get_ticket(self, obj):
@@ -280,7 +280,7 @@ class TicketSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ticket
         fields = ['id', 'booking', 'booking_info', 'price', 'barcode', 'status', 'issued_at', 'used_at']
-        read_only_fields = ['id', 'barcode', 'issued_at', 'used_at']
+        read_only_fields = ['id', 'booking', 'price', 'barcode', 'status', 'issued_at', 'used_at']
 
     @extend_schema_field({'type': 'object', 'nullable': True})
     def get_booking_info(self, obj):
@@ -293,7 +293,7 @@ class PaymentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payment
         fields = ['id', 'ticket', 'amount', 'method', 'status', 'transaction_id', 'created_at', 'completed_at']
-        read_only_fields = ['id', 'created_at', 'completed_at']
+        read_only_fields = ['id', 'ticket', 'amount', 'status', 'created_at', 'completed_at']
 
 
 class PaymentCreateSerializer(serializers.ModelSerializer):

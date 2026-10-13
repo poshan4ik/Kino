@@ -1,32 +1,64 @@
 from rest_framework import permissions
 
 
+class IsClient(permissions.BasePermission):
+    """Только клиенты"""
+
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated and request.user.role == 'client')
+
+
+class IsCashier(permissions.BasePermission):
+    """Кассир/менеджер/админ — операции продажи, отмены и возврата (без контролёра)"""
+
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated and request.user.role in ['cashier', 'manager', 'admin'])
+
+
+class IsController(permissions.BasePermission):
+    """Только контролёр (проверка билетов)"""
+
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated and request.user.role == 'controller')
+
+
+class IsManager(permissions.BasePermission):
+    """Только менеджер"""
+
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated and request.user.role == 'manager')
+
+
+class IsAdmin(permissions.BasePermission):
+    """Только администратор"""
+
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated and request.user.role == 'admin')
+
+
 class IsAdminOrManager(permissions.BasePermission):
     """Доступ для администраторов и менеджеров"""
 
     def has_permission(self, request, view):
-        return request.user and request.user.is_authenticated and request.user.role in ['admin', 'manager']
+        return bool(request.user and request.user.is_authenticated and request.user.role in ['admin', 'manager'])
 
 
 class IsCashierOrAbove(permissions.BasePermission):
     """Доступ для кассиров, контролёров, менеджеров и админов"""
 
     def has_permission(self, request, view):
-        return request.user and request.user.is_authenticated and request.user.role in ['cashier', 'controller', 'manager', 'admin']
+        return bool(request.user and request.user.is_authenticated and request.user.role in ['cashier', 'controller', 'manager', 'admin'])
 
 
-class IsCashierRole(permissions.BasePermission):
-    """Кассир/менеджер/админ — операции продажи, отмены и возврата (без контролёра)"""
-
-    def has_permission(self, request, view):
-        return request.user and request.user.is_authenticated and request.user.role in ['cashier', 'manager', 'admin']
+# Совместимость: кассир/менеджер/админ (без контролёра)
+IsCashierRole = IsCashier
 
 
 class IsControllerOrAbove(permissions.BasePermission):
     """Доступ для контролёров, менеджеров и админов"""
 
     def has_permission(self, request, view):
-        return request.user and request.user.is_authenticated and request.user.role in ['controller', 'manager', 'admin']
+        return bool(request.user and request.user.is_authenticated and request.user.role in ['controller', 'manager', 'admin'])
 
 
 class IsOwnerOrStaff(permissions.BasePermission):
@@ -49,4 +81,4 @@ class PublicReadOnly(permissions.BasePermission):
     def has_permission(self, request, view):
         if request.method in permissions.SAFE_METHODS:
             return True
-        return request.user and request.user.is_authenticated
+        return bool(request.user and request.user.is_authenticated)

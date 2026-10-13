@@ -5,12 +5,14 @@ from django.conf.urls.static import static
 from django.contrib.auth import views as auth_views
 from django.views import defaults as django_defaults
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+from rest_framework.authtoken.views import ObtainAuthToken
 from cinema import views as cinema_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('cinema.urls')),
     path('api/auth/', include('rest_framework.urls')),
+    path('api/auth/token/', ObtainAuthToken.as_view(), name='api-token'),
 
     # OpenAPI / Swagger
     path('api/schema/', SpectacularAPIView.as_view(), name='api-schema'),

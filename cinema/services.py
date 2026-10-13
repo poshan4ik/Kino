@@ -78,7 +78,7 @@ def create_booking(user, session, seat_ids):
 
     class SeatTaken(BookingError):
         def __init__(self):
-            super().__init__('Одно или несколько мест уже заняты')
+            super().__init__('Одно или несколько мест уже заняты', status=409)
 
     try:
         with transaction.atomic():
@@ -109,7 +109,7 @@ def create_booking(user, session, seat_ids):
         raise
     except IntegrityError:
         raise BookingError(
-            'Это место только что забронировали, выберите другое'
+            'Это место только что забронировали, выберите другое', status=409
         )
 
     return bookings, expires_at
