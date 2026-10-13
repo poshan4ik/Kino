@@ -2,9 +2,9 @@
 
 Django + DRF: афиша, онлайн-бронь мест с QR-билетами, касса, контроль входа, панель менеджера и админка. Премиальный тёмный дизайн без фреймворков (кастомная дизайн-система в `static/css/main.css`).
 
-![Главная страница](docs/screenshots/home.png)
-![Выбор мест](docs/screenshots/booking.png)
-![Панель менеджера](docs/screenshots/manager.png)
+![Главная страница](docs/screenshots/home.jpg)
+![Выбор мест](docs/screenshots/booking.jpg)
+![Панель менеджера](docs/screenshots/manager.jpg)
 
 ## Возможности
 

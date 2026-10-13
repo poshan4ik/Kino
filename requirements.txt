@@ -1,12 +1,12 @@
-# Фиксированные версии для воспроизводимых сборок
+# Django и DRF зафиксированы; остальное — совместимые версии
 Django==4.2.30
 djangorestframework==3.15.2
-django-filter==23.5
-drf-spectacular==0.28.0
-python-dotenv==1.0.1
-Pillow==12.3.0
-whitenoise==6.8.2
-dj-database-url==2.2.0
-psycopg2-binary==2.9.10
-gunicorn==22.0.0
-coverage==7.6.9
+django-filter
+drf-spectacular
+python-dotenv
+Pillow
+whitenoise
+dj-database-url
+psycopg2-binary
+gunicorn
+coverage
