@@ -821,28 +821,19 @@ main { flex: 1 0 auto; }
 }
 .film-days-toggle:hover { color: var(--accent-hover); border-color: var(--accent); background: var(--primary-10); }
 
-.film-card.days-open { z-index: 40; }
-
 .film-card-days {
   display: none;
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(100% - 6px);
-  z-index: 41;
-  max-height: min(60vh, 420px);
+  grid-column: 1 / -1;
+  margin-top: 0.5rem;
+  max-height: 260px;
   overflow-y: auto;
   padding: 0.6rem;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
-  background: rgb(var(--surface-rgb) / 0.97);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  box-shadow: var(--shadow-pop);
+  background: var(--surface);
   overscroll-behavior: contain;
 }
 .film-card-days.open { display: block; animation: fadeUp 0.2s var(--ease); }
-.film-card-days.up { top: auto; bottom: calc(100% - 6px); }
 
 .film-days-hint {
   display: flex;
@@ -2427,7 +2418,6 @@ body {
 }
 @media (max-width: 520px) {
   .film-grid { grid-template-columns: repeat(2, 1fr); }
-  .film-card-days { max-height: 62vh; }
   .ps-price { display: none; }
 }
 

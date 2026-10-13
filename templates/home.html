@@ -57,7 +57,6 @@
                         Трейлер
                     </button>
                     {% endif %}
-                    <a href="#afilms" class="btn btn-outline btn-lg">Вся афиша</a>
                 </div>
                 {% else %}
                 <p class="eyebrow">Кинотеатр «Аврора»</p>
@@ -207,47 +206,46 @@
                             {{ s.time|time:"H:i" }}
                         </a>
                         {% endfor %}                        {% if days.0.sessions|length > 3 or days|length > 1 %}
-                        <button type="button" class="film-days-toggle" data-label="Все сеансы ({{ movie.session_days.0.sessions|length }})"
-                                aria-haspopup="dialog" aria-expanded="false">
+                        <button type="button" class="film-days-toggle" data-label="Все сеансы"
+                                aria-expanded="false" aria-controls="days-{{ movie.id }}">
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                            Все сеансы ({{ movie.session_days.0.sessions|length }})
+                            Все сеансы
                         </button>
                         {% endif %}
                     {% else %}
                         <span>Сеансов нет</span>
                     {% endif %}
+                    {% if movie.session_days %}
+                    <div class="film-card-days" id="days-{{ movie.id }}">
+                        <div class="film-days-hint">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                            Нажмите сеанс — откроется схема зала
+                        </div>
+                        {% for day in movie.session_days %}
+                        <div class="film-day">
+                            <div class="film-day-head">
+                                <span class="film-day-label {% if forloop.first %}today{% endif %}">{{ day.label }}</span>
+                                <span class="film-day-count">{{ day.sessions|length }} {{ day.sessions|length|pluralize:'сеанс,сеанса,сеансов' }}</span>
+                            </div>
+                            <div class="film-day-list">
+                                {% for s in day.sessions %}
+                                <a class="pop-session" href="{% url 'booking' s.id %}"
+                                   data-book-session="{{ s.id }}"
+                                   data-auth="{% if user.is_authenticated %}1{% else %}0{% endif %}">
+                                    <span class="ps-time">{{ s.time|time:"H:i" }}</span>
+                                    <span class="badge {% if s.hall.type == 'IMAX' %}badge-gold{% elif s.hall.type == 'VIP' %}badge-red{% else %}badge-blue{% endif %}">{{ s.hall.get_type_display }}</span>
+                                    <span class="ps-hall">Зал {{ s.hall.number }}</span>
+                                    <span class="ps-price">от {{ s.price_standard }} ₽</span>
+                                    <svg class="ps-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                                </a>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                     {% endwith %}
                 </div>
-
-                {% if movie.session_days %}
-                <div class="film-card-days" role="dialog" aria-label="Расписание сеансов">
-                    <div class="film-days-hint">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                        Нажмите сеанс — откроется схема зала
-                    </div>
-                    {% for day in movie.session_days %}
-                    <div class="film-day">
-                        <div class="film-day-head">
-                            <span class="film-day-label {% if forloop.first %}today{% endif %}">{{ day.label }}</span>
-                            <span class="film-day-count">{{ day.sessions|length }} {{ day.sessions|length|pluralize:'сеанс,сеанса,сеансов' }}</span>
-                        </div>
-                        <div class="film-day-list">
-                            {% for s in day.sessions %}
-                            <a class="pop-session" href="{% url 'booking' s.id %}"
-                               data-book-session="{{ s.id }}"
-                               data-auth="{% if user.is_authenticated %}1{% else %}0{% endif %}">
-                                <span class="ps-time">{{ s.time|time:"H:i" }}</span>
-                                <span class="badge {% if s.hall.type == 'IMAX' %}badge-gold{% elif s.hall.type == 'VIP' %}badge-red{% else %}badge-blue{% endif %}">{{ s.hall.get_type_display }}</span>
-                                <span class="ps-hall">Зал {{ s.hall.number }}</span>
-                                <span class="ps-price">от {{ s.price_standard }} ₽</span>
-                                <svg class="ps-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                            </a>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% endif %}
             </article>
             {% empty %}
             <div class="empty-state" style="grid-column:1/-1;">

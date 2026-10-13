@@ -641,38 +641,29 @@
     });
   }
 
-  /* ── Film card schedule popover ──────────────────────── */
+  /* ── Film card schedule accordion ─────────────────────── */
   function initFilmDays() {
     var openCard = null;
     var openBtn = null;
-
-    function position(card, days) {
-      days.classList.remove('up');
-      var rect = days.getBoundingClientRect();
-      var flip = rect.bottom > window.innerHeight - 10;
-      var fitsUp = rect.top - rect.height > 60;
-      if (flip && fitsUp) days.classList.add('up');
-    }
-
-    function close() {
-      if (!openCard) return;
-      openCard.classList.remove('days-open');
-      var d = openCard.querySelector('.film-card-days');
-      if (d) d.classList.remove('open', 'up');
-      if (openBtn) {
-        openBtn.setAttribute('aria-expanded', 'false');
-        openBtn.textContent = openBtn.getAttribute('data-label') || 'Все сеансы';
-        restoreIcon(openBtn);
-      }
-      openCard = null;
-      openBtn = null;
-    }
 
     function restoreIcon(btn) {
       var label = btn.getAttribute('data-label') || '';
       btn.innerHTML =
         '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> ' +
         esc(label);
+    }
+
+    function close() {
+      if (!openCard) return;
+      openCard.classList.remove('days-open');
+      var d = openCard.querySelector('.film-card-days');
+      if (d) d.classList.remove('open');
+      if (openBtn) {
+        openBtn.setAttribute('aria-expanded', 'false');
+        restoreIcon(openBtn);
+      }
+      openCard = null;
+      openBtn = null;
     }
 
     document.addEventListener('click', function (e) {
@@ -692,7 +683,6 @@
           toggle.setAttribute('aria-expanded', 'true');
           toggle.innerHTML =
             '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Скрыть';
-          requestAnimationFrame(function () { position(card, days); });
         }
         return;
       }
@@ -702,8 +692,6 @@
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') close();
     });
-
-    window.addEventListener('resize', close);
   }
 
   /* ── Countdown (generic, [data-countdown]) ───────────── */
