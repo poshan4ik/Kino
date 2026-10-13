@@ -97,6 +97,9 @@
 
 {% block extra_js %}
 <script>
+    Aurora.MAX_SEATS = {{ BOOKING_MAX_SEATS }};
+</script>
+<script>
 (function () {
     var seats = document.querySelectorAll('.seat:not(:disabled)');
     var sel = new Set();

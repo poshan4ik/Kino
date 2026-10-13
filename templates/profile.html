@@ -53,6 +53,11 @@
                                     <span class="countdown" data-countdown="{{ b.expires_at|date:'c' }}"><span class="cd-dot"></span><span>—</span></span>
                                     {% endif %}
                                     <button type="button" class="btn btn-primary btn-sm" data-pay-booking="{{ b.id }}">Оплатить онлайн</button>
+                                    <form method="post" action="{% url 'profile_cancel_booking' b.id %}" style="display:inline;"
+                                          onsubmit="return confirm('Отменить бронь? Место станет свободным.');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-outline btn-sm">Отменить</button>
+                                    </form>
                                 </div>
                             </div>
                         </article>
@@ -189,6 +194,20 @@
                     <div style="grid-column:1/-1;" class="flex items-center gap-3">
                         <button type="submit" class="btn btn-primary">Сохранить изменения</button>
                         <span class="text-xs text-muted" id="profileMsg"></span>
+                    </div>
+                </form>
+
+                <h3 style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:var(--text);margin:2rem 0 .75rem;">СМЕНА ПАРОЛЯ</h3>
+                <form method="post" action="{% url 'profile_password' %}" class="panel p-5" style="display:grid;gap:1rem;max-width:34rem;">
+                    {% csrf_token %}
+                    <label class="field"><span class="field-label">Текущий пароль</span>
+                        <input type="password" class="form-control" name="old_password" required autocomplete="current-password"></label>
+                    <label class="field"><span class="field-label">Новый пароль</span>
+                        <input type="password" class="form-control" name="new_password1" required autocomplete="new-password"></label>
+                    <label class="field"><span class="field-label">Повторите новый пароль</span>
+                        <input type="password" class="form-control" name="new_password2" required autocomplete="new-password"></label>
+                    <div class="flex items-center gap-3">
+                        <button type="submit" class="btn btn-primary">Сменить пароль</button>
                     </div>
                 </form>
             </div>

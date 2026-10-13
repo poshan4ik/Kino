@@ -1,0 +1,3948 @@
+openapi: 3.0.3
+info:
+  title: АИС «Аврора» API
+  version: 1.0.0
+  description: 'API кинотеатра: афиша, бронирование, билеты, платежи, дашборд'
+paths:
+  /api/bookings/:
+    get:
+      operationId: api_bookings_list
+      parameters:
+      - in: query
+        name: client
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: query
+        name: session
+        schema:
+          type: integer
+      - in: query
+        name: status
+        schema:
+          type: string
+          title: Статус
+          enum:
+          - cancelled
+          - created
+          - expired
+          - paid
+          - pending_payment
+          - used
+        description: |-
+          * `created` - Создано
+          * `pending_payment` - Ожидает оплаты
+          * `paid` - Оплачено
+          * `used` - Использовано
+          * `cancelled` - Отменено
+          * `expired` - Просрочено
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedBookingList'
+          description: ''
+    post:
+      operationId: api_bookings_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BookingCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BookingCreate'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingCreate'
+          description: ''
+  /api/bookings/{id}/:
+    get:
+      operationId: api_bookings_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Бронирование.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+          description: ''
+    put:
+      operationId: api_bookings_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Бронирование.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Booking'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Booking'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Booking'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+          description: ''
+    patch:
+      operationId: api_bookings_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Бронирование.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedBooking'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedBooking'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedBooking'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+          description: ''
+    delete:
+      operationId: api_bookings_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Бронирование.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/bookings/{id}/cancel/:
+    post:
+      operationId: api_bookings_cancel_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Бронирование.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Booking'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Booking'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Booking'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+          description: ''
+  /api/bookings/{id}/cancel_own/:
+    post:
+      operationId: api_bookings_cancel_own_create
+      description: Клиент отменяет свою непогашенную бронь до начала сеанса.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Бронирование.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Booking'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Booking'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Booking'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+          description: ''
+  /api/bookings/{id}/confirm_payment/:
+    post:
+      operationId: api_bookings_confirm_payment_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Бронирование.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Booking'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Booking'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Booking'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+          description: ''
+  /api/bookings/{id}/refund/:
+    post:
+      operationId: api_bookings_refund_create
+      description: 'Возврат: билет → refunded, платежи → refunded, бронь → cancelled.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Бронирование.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Booking'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Booking'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Booking'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+          description: ''
+  /api/bookings/expire_old/:
+    post:
+      operationId: api_bookings_expire_old_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Booking'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Booking'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Booking'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+          description: ''
+  /api/bookings/hold/:
+    post:
+      operationId: api_bookings_hold_create
+      description: Атомарно удерживает места сеанса («всё или ничего») через services.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HoldRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/HoldRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/HoldRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/bookings/pay/:
+    post:
+      operationId: api_bookings_pay_create
+      description: |-
+        Оплата нескольких броней одним запросом.
+
+        Клиент оплачивает только свои брони (card/online),
+        персонал — любые брони любым способом.
+      parameters:
+      - in: query
+        name: client
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: query
+        name: session
+        schema:
+          type: integer
+      - in: query
+        name: status
+        schema:
+          type: string
+          title: Статус
+          enum:
+          - cancelled
+          - created
+          - expired
+          - paid
+          - pending_payment
+          - used
+        description: |-
+          * `created` - Создано
+          * `pending_payment` - Ожидает оплаты
+          * `paid` - Оплачено
+          * `used` - Использовано
+          * `cancelled` - Отменено
+          * `expired` - Просрочено
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PayRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PayRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PayRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTicketList'
+          description: ''
+  /api/dashboard/sales_report/:
+    get:
+      operationId: api_dashboard_sales_report_retrieve
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/dashboard/stats/:
+    get:
+      operationId: api_dashboard_stats_retrieve
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardStats'
+          description: ''
+  /api/favorites/:
+    get:
+      operationId: api_favorites_list
+      description: GET /api/favorites/ — избранные фильмы текущего пользователя
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Favorite'
+          description: ''
+  /api/favorites/{movie_id}/:
+    post:
+      operationId: api_favorites_create
+      description: POST /api/favorites/{movie_id}/ — добавить, DELETE — убрать
+      parameters:
+      - in: path
+        name: movie_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Favorite'
+          description: ''
+    delete:
+      operationId: api_favorites_destroy
+      description: POST /api/favorites/{movie_id}/ — добавить, DELETE — убрать
+      parameters:
+      - in: path
+        name: movie_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/genres/:
+    get:
+      operationId: api_genres_list
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedGenreList'
+          description: ''
+    post:
+      operationId: api_genres_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Genre'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Genre'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Genre'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Genre'
+          description: ''
+  /api/genres/{id}/:
+    get:
+      operationId: api_genres_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Жанр.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Genre'
+          description: ''
+    put:
+      operationId: api_genres_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Жанр.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Genre'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Genre'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Genre'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Genre'
+          description: ''
+    patch:
+      operationId: api_genres_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Жанр.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedGenre'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedGenre'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedGenre'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Genre'
+          description: ''
+    delete:
+      operationId: api_genres_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Жанр.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/halls/:
+    get:
+      operationId: api_halls_list
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: type
+        schema:
+          type: string
+          title: Тип зала
+          enum:
+          - 2D
+          - 3D
+          - IMAX
+          - VIP
+        description: |-
+          * `2D` - 2D
+          * `3D` - 3D
+          * `VIP` - VIP
+          * `IMAX` - IMAX
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedHallList'
+          description: ''
+    post:
+      operationId: api_halls_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Hall'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Hall'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Hall'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Hall'
+          description: ''
+  /api/halls/{id}/:
+    get:
+      operationId: api_halls_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Зал.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Hall'
+          description: ''
+    put:
+      operationId: api_halls_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Зал.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Hall'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Hall'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Hall'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Hall'
+          description: ''
+    patch:
+      operationId: api_halls_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Зал.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedHall'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedHall'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedHall'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Hall'
+          description: ''
+    delete:
+      operationId: api_halls_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Зал.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/halls/{id}/generate_seats/:
+    post:
+      operationId: api_halls_generate_seats_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Зал.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Hall'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Hall'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Hall'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Hall'
+          description: ''
+  /api/movies/:
+    get:
+      operationId: api_movies_list
+      parameters:
+      - in: query
+        name: age_rating
+        schema:
+          type: integer
+      - in: query
+        name: genre
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          title: Статус проката
+          enum:
+          - active
+          - draft
+          - ended
+          - upcoming
+        description: |-
+          * `draft` - Черновик
+          * `active` - В прокате
+          * `ended` - Прокат завершён
+          * `upcoming` - Ожидается
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMovieListList'
+          description: ''
+    post:
+      operationId: api_movies_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Movie'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Movie'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Movie'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Movie'
+          description: ''
+  /api/movies/{movie_id}/reviews/:
+    get:
+      operationId: api_movies_reviews_retrieve
+      description: GET /api/movies/{movie_id}/reviews/ — отзывы и рейтинг фильма
+      parameters:
+      - in: path
+        name: movie_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MovieReviewsSummary'
+          description: ''
+  /api/movies/{id}/:
+    get:
+      operationId: api_movies_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Фильм.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Movie'
+          description: ''
+    put:
+      operationId: api_movies_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Фильм.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Movie'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Movie'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Movie'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Movie'
+          description: ''
+    patch:
+      operationId: api_movies_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Фильм.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMovie'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedMovie'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedMovie'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Movie'
+          description: ''
+    delete:
+      operationId: api_movies_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Фильм.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/movies/{id}/sessions/:
+    get:
+      operationId: api_movies_sessions_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Фильм.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Movie'
+          description: ''
+  /api/payments/:
+    get:
+      operationId: api_payments_list
+      parameters:
+      - in: query
+        name: method
+        schema:
+          type: string
+          title: Способ оплаты
+          enum:
+          - card
+          - cash
+          - online
+        description: |-
+          * `cash` - Наличные
+          * `card` - Карта
+          * `online` - Онлайн
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: query
+        name: status
+        schema:
+          type: string
+          title: Статус
+          enum:
+          - completed
+          - failed
+          - pending
+          - refunded
+        description: |-
+          * `pending` - Ожидает
+          * `completed` - Завершён
+          * `failed` - Неудача
+          * `refunded` - Возвращён
+      - in: query
+        name: ticket
+        schema:
+          type: integer
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPaymentList'
+          description: ''
+    post:
+      operationId: api_payments_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PaymentCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PaymentCreate'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentCreate'
+          description: ''
+  /api/payments/{id}/:
+    get:
+      operationId: api_payments_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Платёж.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+          description: ''
+    put:
+      operationId: api_payments_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Платёж.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Payment'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Payment'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Payment'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+          description: ''
+    patch:
+      operationId: api_payments_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Платёж.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPayment'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPayment'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPayment'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+          description: ''
+    delete:
+      operationId: api_payments_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Платёж.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/reviews/:
+    get:
+      operationId: api_reviews_list
+      description: GET /api/reviews/ — список отзывов, POST — создать/обновить свой
+        отзыв
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Review'
+          description: ''
+    post:
+      operationId: api_reviews_create
+      description: GET /api/reviews/ — список отзывов, POST — создать/обновить свой
+        отзыв
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReviewCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReviewCreate'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Review'
+          description: ''
+  /api/schema/:
+    get:
+      operationId: api_schema_retrieve
+      description: |-
+        OpenApi3 schema for this API. Format can be selected via content negotiation.
+
+        - YAML: application/vnd.oai.openapi
+        - JSON: application/vnd.oai.openapi+json
+      parameters:
+      - in: query
+        name: format
+        schema:
+          type: string
+          enum:
+          - json
+          - yaml
+      - in: query
+        name: lang
+        schema:
+          type: string
+          enum:
+          - af
+          - ar
+          - ar-dz
+          - ast
+          - az
+          - be
+          - bg
+          - bn
+          - br
+          - bs
+          - ca
+          - ckb
+          - cs
+          - cy
+          - da
+          - de
+          - dsb
+          - el
+          - en
+          - en-au
+          - en-gb
+          - eo
+          - es
+          - es-ar
+          - es-co
+          - es-mx
+          - es-ni
+          - es-ve
+          - et
+          - eu
+          - fa
+          - fi
+          - fr
+          - fy
+          - ga
+          - gd
+          - gl
+          - he
+          - hi
+          - hr
+          - hsb
+          - hu
+          - hy
+          - ia
+          - id
+          - ig
+          - io
+          - is
+          - it
+          - ja
+          - ka
+          - kab
+          - kk
+          - km
+          - kn
+          - ko
+          - ky
+          - lb
+          - lt
+          - lv
+          - mk
+          - ml
+          - mn
+          - mr
+          - ms
+          - my
+          - nb
+          - ne
+          - nl
+          - nn
+          - os
+          - pa
+          - pl
+          - pt
+          - pt-br
+          - ro
+          - ru
+          - sk
+          - sl
+          - sq
+          - sr
+          - sr-latn
+          - sv
+          - sw
+          - ta
+          - te
+          - tg
+          - th
+          - tk
+          - tr
+          - tt
+          - udm
+          - uk
+          - ur
+          - uz
+          - vi
+          - zh-hans
+          - zh-hant
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/vnd.oai.openapi:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/yaml:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/vnd.oai.openapi+json:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/seats/:
+    get:
+      operationId: api_seats_list
+      parameters:
+      - in: query
+        name: category
+        schema:
+          type: string
+          title: Категория
+          enum:
+          - comfort
+          - standard
+          - vip
+        description: |-
+          * `standard` - Стандарт
+          * `comfort` - Комфорт
+          * `vip` - VIP
+      - in: query
+        name: hall
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSeatList'
+          description: ''
+    post:
+      operationId: api_seats_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Seat'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Seat'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Seat'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Seat'
+          description: ''
+  /api/seats/{id}/:
+    get:
+      operationId: api_seats_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Место.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Seat'
+          description: ''
+    put:
+      operationId: api_seats_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Место.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Seat'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Seat'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Seat'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Seat'
+          description: ''
+    patch:
+      operationId: api_seats_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Место.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSeat'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSeat'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSeat'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Seat'
+          description: ''
+    delete:
+      operationId: api_seats_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Место.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/sessions/:
+    get:
+      operationId: api_sessions_list
+      parameters:
+      - in: query
+        name: date
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: hall
+        schema:
+          type: integer
+      - in: query
+        name: is_active
+        schema:
+          type: boolean
+      - in: query
+        name: movie
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSessionListList'
+          description: ''
+    post:
+      operationId: api_sessions_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Session'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Session'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Session'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+          description: ''
+  /api/sessions/{id}/:
+    get:
+      operationId: api_sessions_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Сеанс.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+          description: ''
+    put:
+      operationId: api_sessions_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Сеанс.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Session'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Session'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Session'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+          description: ''
+    patch:
+      operationId: api_sessions_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Сеанс.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSession'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSession'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSession'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+          description: ''
+    delete:
+      operationId: api_sessions_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Сеанс.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/sessions/{id}/seats/:
+    get:
+      operationId: api_sessions_seats_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Сеанс.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+          description: ''
+  /api/sessions/by_date/:
+    get:
+      operationId: api_sessions_by_date_retrieve
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+          description: ''
+  /api/tickets/:
+    get:
+      operationId: api_tickets_list
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          title: Статус
+          enum:
+          - active
+          - cancelled
+          - refunded
+          - used
+        description: |-
+          * `active` - Активен
+          * `used` - Использован
+          * `refunded` - Возвращён
+          * `cancelled` - Аннулирован
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTicketList'
+          description: ''
+    post:
+      operationId: api_tickets_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Ticket'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Ticket'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Ticket'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+          description: ''
+  /api/tickets/{barcode}/:
+    get:
+      operationId: api_tickets_retrieve
+      parameters:
+      - in: path
+        name: barcode
+        schema:
+          type: string
+          title: Штрихкод
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+          description: ''
+    put:
+      operationId: api_tickets_update
+      parameters:
+      - in: path
+        name: barcode
+        schema:
+          type: string
+          title: Штрихкод
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Ticket'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Ticket'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Ticket'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+          description: ''
+    patch:
+      operationId: api_tickets_partial_update
+      parameters:
+      - in: path
+        name: barcode
+        schema:
+          type: string
+          title: Штрихкод
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTicket'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTicket'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTicket'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+          description: ''
+    delete:
+      operationId: api_tickets_destroy
+      parameters:
+      - in: path
+        name: barcode
+        schema:
+          type: string
+          title: Штрихкод
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/tickets/{barcode}/validate_ticket/:
+    post:
+      operationId: api_tickets_validate_ticket_create
+      parameters:
+      - in: path
+        name: barcode
+        schema:
+          type: string
+          title: Штрихкод
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Ticket'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Ticket'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Ticket'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+          description: ''
+  /api/tickets/check_by_barcode/:
+    post:
+      operationId: api_tickets_check_by_barcode_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Ticket'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Ticket'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Ticket'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+          description: ''
+  /api/users/:
+    get:
+      operationId: api_users_list
+      parameters:
+      - in: query
+        name: is_active
+        schema:
+          type: boolean
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: query
+        name: role
+        schema:
+          type: string
+          title: Роль
+          enum:
+          - admin
+          - cashier
+          - client
+          - controller
+          - manager
+        description: |-
+          * `client` - Клиент
+          * `cashier` - Кассир
+          * `controller` - Контролёр
+          * `manager` - Менеджер
+          * `admin` - Администратор
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedUserList'
+          description: ''
+    post:
+      operationId: api_users_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserCreate'
+          description: ''
+  /api/users/{id}/:
+    get:
+      operationId: api_users_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Пользователь.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    put:
+      operationId: api_users_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Пользователь.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserAdmin'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserAdmin'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserAdmin'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserAdmin'
+          description: ''
+    patch:
+      operationId: api_users_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Пользователь.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserAdmin'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUserAdmin'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUserAdmin'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserAdmin'
+          description: ''
+    delete:
+      operationId: api_users_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Пользователь.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/users/me/:
+    get:
+      operationId: api_users_me_retrieve
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/users/update_me/:
+    patch:
+      operationId: api_users_update_me_partial_update
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUser'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUser'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUser'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+components:
+  schemas:
+    Booking:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        client:
+          type: integer
+          readOnly: true
+          title: Клиент
+        client_name:
+          type: string
+          readOnly: true
+        client_username:
+          type: string
+          readOnly: true
+        session:
+          type: integer
+          title: Сеанс
+        session_info:
+          allOf:
+          - $ref: '#/components/schemas/SessionList'
+          readOnly: true
+        seat:
+          type: integer
+          title: Место
+        seat_info:
+          allOf:
+          - $ref: '#/components/schemas/Seat'
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/BookingStatus'
+          title: Статус
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Дата создания
+        expires_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          title: Истекает
+        ticket:
+          type: object
+          nullable: true
+          readOnly: true
+      required:
+      - client
+      - client_name
+      - client_username
+      - created_at
+      - expires_at
+      - id
+      - seat
+      - seat_info
+      - session
+      - session_info
+      - ticket
+    BookingCreate:
+      type: object
+      properties:
+        session:
+          type: integer
+          title: Сеанс
+        seat:
+          type: integer
+          title: Место
+      required:
+      - seat
+      - session
+    BookingStatus:
+      enum:
+      - created
+      - pending_payment
+      - paid
+      - used
+      - cancelled
+      - expired
+      type: string
+      description: |-
+        * `created` - Создано
+        * `pending_payment` - Ожидает оплаты
+        * `paid` - Оплачено
+        * `used` - Использовано
+        * `cancelled` - Отменено
+        * `expired` - Просрочено
+    CategoryEnum:
+      enum:
+      - standard
+      - comfort
+      - vip
+      type: string
+      description: |-
+        * `standard` - Стандарт
+        * `comfort` - Комфорт
+        * `vip` - VIP
+    DashboardStats:
+      type: object
+      properties:
+        sessions_today:
+          type: integer
+        tickets_sold:
+          type: integer
+        revenue:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        occupancy_rate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+        movies_active:
+          type: integer
+        halls_total:
+          type: integer
+      required:
+      - halls_total
+      - movies_active
+      - occupancy_rate
+      - revenue
+      - sessions_today
+      - tickets_sold
+    Favorite:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        movie:
+          type: integer
+          title: Фильм
+        movie_title:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Добавлено
+      required:
+      - created_at
+      - id
+      - movie
+      - movie_title
+    Genre:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Название
+          maxLength: 100
+        description:
+          type: string
+          title: Описание
+        movies_count:
+          type: integer
+          readOnly: true
+      required:
+      - id
+      - movies_count
+      - name
+    Hall:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        number:
+          type: integer
+          title: Номер зала
+        type:
+          allOf:
+          - $ref: '#/components/schemas/TypeEnum'
+          title: Тип зала
+        capacity:
+          type: integer
+          minimum: 1
+          title: Вместимость
+        description:
+          type: string
+          title: Описание
+        seats_count:
+          type: integer
+          readOnly: true
+        sessions_count:
+          type: integer
+          readOnly: true
+      required:
+      - capacity
+      - id
+      - number
+      - seats_count
+      - sessions_count
+    HoldRequest:
+      type: object
+      description: Тело POST /api/bookings/hold/.
+      properties:
+        session:
+          type: integer
+        seats:
+          type: array
+          items:
+            type: integer
+          description: ID мест (не больше BOOKING_MAX_SEATS)
+          maxItems: 10
+          minItems: 1
+      required:
+      - seats
+      - session
+    Movie:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          title: Название
+          maxLength: 255
+        genre:
+          type: integer
+          title: Жанр
+        genre_name:
+          type: string
+          readOnly: true
+        duration:
+          type: integer
+          minimum: 1
+          title: Длительность (мин)
+        age_rating:
+          type: integer
+          maximum: 21
+          minimum: 0
+          title: Возрастное ограничение
+        description:
+          type: string
+          title: Описание
+        poster:
+          type: string
+          format: uri
+          nullable: true
+          title: Постер
+        poster_url:
+          type: string
+          format: uri
+          readOnly: true
+        trailer_url:
+          type: string
+          format: uri
+          title: Ссылка на трейлер (YouTube)
+          description: 'Например: https://www.youtube.com/watch?v=…'
+          maxLength: 300
+        status:
+          allOf:
+          - $ref: '#/components/schemas/MovieStatus'
+          title: Статус проката
+        sessions_count:
+          type: integer
+          readOnly: true
+        rating:
+          type: number
+          format: double
+          readOnly: true
+        reviews_count:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - age_rating
+      - created_at
+      - duration
+      - genre
+      - genre_name
+      - id
+      - poster_url
+      - rating
+      - reviews_count
+      - sessions_count
+      - title
+      - updated_at
+    MovieList:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          title: Название
+          maxLength: 255
+        genre_name:
+          type: string
+          readOnly: true
+        duration:
+          type: integer
+          minimum: 1
+          title: Длительность (мин)
+        age_rating:
+          type: integer
+          maximum: 21
+          minimum: 0
+          title: Возрастное ограничение
+        poster_url:
+          type: string
+          format: uri
+          readOnly: true
+        trailer_url:
+          type: string
+          format: uri
+          title: Ссылка на трейлер (YouTube)
+          description: 'Например: https://www.youtube.com/watch?v=…'
+          maxLength: 300
+        status:
+          allOf:
+          - $ref: '#/components/schemas/MovieStatus'
+          title: Статус проката
+        rating:
+          type: number
+          format: double
+          readOnly: true
+        reviews_count:
+          type: integer
+          readOnly: true
+        next_sessions:
+          type: array
+          items:
+            type: object
+          readOnly: true
+      required:
+      - age_rating
+      - duration
+      - genre_name
+      - id
+      - next_sessions
+      - poster_url
+      - rating
+      - reviews_count
+      - title
+    MovieReviewsSummary:
+      type: object
+      description: 'Сводка отзывов фильма: рейтинг, количество, список.'
+      properties:
+        rating:
+          type: number
+          format: double
+          nullable: true
+        count:
+          type: integer
+        reviews:
+          type: array
+          items:
+            $ref: '#/components/schemas/Review'
+      required:
+      - count
+      - rating
+      - reviews
+    MovieStatus:
+      enum:
+      - draft
+      - active
+      - ended
+      - upcoming
+      type: string
+      description: |-
+        * `draft` - Черновик
+        * `active` - В прокате
+        * `ended` - Прокат завершён
+        * `upcoming` - Ожидается
+    PaginatedBookingList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Booking'
+    PaginatedGenreList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Genre'
+    PaginatedHallList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Hall'
+    PaginatedMovieListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/MovieList'
+    PaginatedPaymentList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Payment'
+    PaginatedSeatList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Seat'
+    PaginatedSessionListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SessionList'
+    PaginatedTicketList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Ticket'
+    PaginatedUserList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+    PatchedBooking:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        client:
+          type: integer
+          readOnly: true
+          title: Клиент
+        client_name:
+          type: string
+          readOnly: true
+        client_username:
+          type: string
+          readOnly: true
+        session:
+          type: integer
+          title: Сеанс
+        session_info:
+          allOf:
+          - $ref: '#/components/schemas/SessionList'
+          readOnly: true
+        seat:
+          type: integer
+          title: Место
+        seat_info:
+          allOf:
+          - $ref: '#/components/schemas/Seat'
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/BookingStatus'
+          title: Статус
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Дата создания
+        expires_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          title: Истекает
+        ticket:
+          type: object
+          nullable: true
+          readOnly: true
+    PatchedGenre:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Название
+          maxLength: 100
+        description:
+          type: string
+          title: Описание
+        movies_count:
+          type: integer
+          readOnly: true
+    PatchedHall:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        number:
+          type: integer
+          title: Номер зала
+        type:
+          allOf:
+          - $ref: '#/components/schemas/TypeEnum'
+          title: Тип зала
+        capacity:
+          type: integer
+          minimum: 1
+          title: Вместимость
+        description:
+          type: string
+          title: Описание
+        seats_count:
+          type: integer
+          readOnly: true
+        sessions_count:
+          type: integer
+          readOnly: true
+    PatchedMovie:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          title: Название
+          maxLength: 255
+        genre:
+          type: integer
+          title: Жанр
+        genre_name:
+          type: string
+          readOnly: true
+        duration:
+          type: integer
+          minimum: 1
+          title: Длительность (мин)
+        age_rating:
+          type: integer
+          maximum: 21
+          minimum: 0
+          title: Возрастное ограничение
+        description:
+          type: string
+          title: Описание
+        poster:
+          type: string
+          format: uri
+          nullable: true
+          title: Постер
+        poster_url:
+          type: string
+          format: uri
+          readOnly: true
+        trailer_url:
+          type: string
+          format: uri
+          title: Ссылка на трейлер (YouTube)
+          description: 'Например: https://www.youtube.com/watch?v=…'
+          maxLength: 300
+        status:
+          allOf:
+          - $ref: '#/components/schemas/MovieStatus'
+          title: Статус проката
+        sessions_count:
+          type: integer
+          readOnly: true
+        rating:
+          type: number
+          format: double
+          readOnly: true
+        reviews_count:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedPayment:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        ticket:
+          type: integer
+          title: Билет
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          title: Сумма
+        method:
+          allOf:
+          - $ref: '#/components/schemas/PaymentMethod'
+          title: Способ оплаты
+        status:
+          allOf:
+          - $ref: '#/components/schemas/PaymentStatus'
+          title: Статус
+        transaction_id:
+          type: string
+          title: ID транзакции
+          maxLength: 100
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Дата
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          title: Завершён
+    PatchedSeat:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        hall:
+          type: integer
+          title: Зал
+        row:
+          type: integer
+          minimum: 1
+          title: Ряд
+        number:
+          type: integer
+          minimum: 1
+          title: Номер места
+        category:
+          allOf:
+          - $ref: '#/components/schemas/CategoryEnum'
+          title: Категория
+    PatchedSession:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        movie:
+          type: integer
+          title: Фильм
+        movie_title:
+          type: string
+          readOnly: true
+        movie_duration:
+          type: integer
+          readOnly: true
+        movie_age_rating:
+          type: integer
+          readOnly: true
+        hall:
+          type: integer
+          title: Зал
+        hall_number:
+          type: integer
+          readOnly: true
+        hall_type:
+          type: string
+          readOnly: true
+        date:
+          type: string
+          format: date
+          title: Дата
+        time:
+          type: string
+          format: time
+          title: Время
+        price_standard:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+          title: Цена (Стандарт)
+        price_comfort:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+          title: Цена (Комфорт)
+        price_vip:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+          title: Цена (VIP)
+        is_active:
+          type: boolean
+          title: Активен
+        available_seats_count:
+          type: integer
+          readOnly: true
+        seats_layout:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedTicket:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        booking:
+          type: integer
+          title: Бронирование
+        booking_info:
+          type: object
+          nullable: true
+          readOnly: true
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+          title: Цена
+        barcode:
+          type: string
+          readOnly: true
+          title: Штрихкод
+        status:
+          allOf:
+          - $ref: '#/components/schemas/TicketStatus'
+          title: Статус
+        issued_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Выдан
+        used_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          title: Использован
+    PatchedUser:
+      type: object
+      description: 'Публичный/личный профиль: роль — только чтение (защита от эскалирования).'
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          title: Имя пользователя
+          description: Обязательное поле. Не более 150 символов. Только буквы, цифры
+            и символы @/./+/-/_.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Адрес электронной почты
+          maxLength: 254
+        first_name:
+          type: string
+          title: Имя
+          maxLength: 150
+        last_name:
+          type: string
+          title: Фамилия
+          maxLength: 150
+        role:
+          allOf:
+          - $ref: '#/components/schemas/UserRole'
+          readOnly: true
+          title: Роль
+        phone:
+          type: string
+          title: Телефон
+          maxLength: 20
+        is_active:
+          type: boolean
+          readOnly: true
+          title: Активный
+          description: Отметьте, если пользователь должен считаться активным. Уберите
+            эту отметку вместо удаления учётной записи.
+        date_joined:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Дата регистрации
+    PatchedUserAdmin:
+      type: object
+      description: CRUD пользователей менеджером/админом (роль редактируема).
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          title: Имя пользователя
+          description: Обязательное поле. Не более 150 символов. Только буквы, цифры
+            и символы @/./+/-/_.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Адрес электронной почты
+          maxLength: 254
+        first_name:
+          type: string
+          title: Имя
+          maxLength: 150
+        last_name:
+          type: string
+          title: Фамилия
+          maxLength: 150
+        role:
+          allOf:
+          - $ref: '#/components/schemas/UserRole'
+          title: Роль
+        phone:
+          type: string
+          title: Телефон
+          maxLength: 20
+        is_active:
+          type: boolean
+          title: Активный
+          description: Отметьте, если пользователь должен считаться активным. Уберите
+            эту отметку вместо удаления учётной записи.
+        date_joined:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Дата регистрации
+    PayRequest:
+      type: object
+      description: Тело POST /api/bookings/pay/.
+      properties:
+        booking_ids:
+          type: array
+          items:
+            type: integer
+          maxItems: 6
+          minItems: 1
+        method:
+          allOf:
+          - $ref: '#/components/schemas/PayRequestMethodEnum'
+          default: online
+      required:
+      - booking_ids
+    PayRequestMethodEnum:
+      enum:
+      - cash
+      - card
+      - online
+      type: string
+      description: |-
+        * `cash` - cash
+        * `card` - card
+        * `online` - online
+    Payment:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        ticket:
+          type: integer
+          title: Билет
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          title: Сумма
+        method:
+          allOf:
+          - $ref: '#/components/schemas/PaymentMethod'
+          title: Способ оплаты
+        status:
+          allOf:
+          - $ref: '#/components/schemas/PaymentStatus'
+          title: Статус
+        transaction_id:
+          type: string
+          title: ID транзакции
+          maxLength: 100
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Дата
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          title: Завершён
+      required:
+      - amount
+      - completed_at
+      - created_at
+      - id
+      - method
+      - ticket
+    PaymentCreate:
+      type: object
+      properties:
+        ticket:
+          type: integer
+          title: Билет
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          title: Сумма
+        method:
+          allOf:
+          - $ref: '#/components/schemas/PaymentMethod'
+          title: Способ оплаты
+        transaction_id:
+          type: string
+          title: ID транзакции
+          maxLength: 100
+      required:
+      - amount
+      - method
+      - ticket
+    PaymentMethod:
+      enum:
+      - cash
+      - card
+      - online
+      type: string
+      description: |-
+        * `cash` - Наличные
+        * `card` - Карта
+        * `online` - Онлайн
+    PaymentStatus:
+      enum:
+      - pending
+      - completed
+      - failed
+      - refunded
+      type: string
+      description: |-
+        * `pending` - Ожидает
+        * `completed` - Завершён
+        * `failed` - Неудача
+        * `refunded` - Возвращён
+    Review:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user:
+          type: integer
+          readOnly: true
+          title: Пользователь
+        username:
+          type: string
+          readOnly: true
+        movie:
+          type: integer
+          title: Фильм
+        rating:
+          type: integer
+          maximum: 5
+          minimum: 1
+          title: Оценка
+        comment:
+          type: string
+          title: Комментарий
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Создан
+      required:
+      - created_at
+      - id
+      - movie
+      - rating
+      - user
+      - username
+    ReviewCreate:
+      type: object
+      properties:
+        movie:
+          type: integer
+          title: Фильм
+        rating:
+          type: integer
+          maximum: 5
+          minimum: 1
+          title: Оценка
+        comment:
+          type: string
+          title: Комментарий
+      required:
+      - movie
+      - rating
+    Seat:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        hall:
+          type: integer
+          title: Зал
+        row:
+          type: integer
+          minimum: 1
+          title: Ряд
+        number:
+          type: integer
+          minimum: 1
+          title: Номер места
+        category:
+          allOf:
+          - $ref: '#/components/schemas/CategoryEnum'
+          title: Категория
+      required:
+      - hall
+      - id
+      - number
+      - row
+    Session:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        movie:
+          type: integer
+          title: Фильм
+        movie_title:
+          type: string
+          readOnly: true
+        movie_duration:
+          type: integer
+          readOnly: true
+        movie_age_rating:
+          type: integer
+          readOnly: true
+        hall:
+          type: integer
+          title: Зал
+        hall_number:
+          type: integer
+          readOnly: true
+        hall_type:
+          type: string
+          readOnly: true
+        date:
+          type: string
+          format: date
+          title: Дата
+        time:
+          type: string
+          format: time
+          title: Время
+        price_standard:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+          title: Цена (Стандарт)
+        price_comfort:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+          title: Цена (Комфорт)
+        price_vip:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+          title: Цена (VIP)
+        is_active:
+          type: boolean
+          title: Активен
+        available_seats_count:
+          type: integer
+          readOnly: true
+        seats_layout:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - available_seats_count
+      - created_at
+      - date
+      - hall
+      - hall_number
+      - hall_type
+      - id
+      - movie
+      - movie_age_rating
+      - movie_duration
+      - movie_title
+      - seats_layout
+      - time
+    SessionList:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        movie_title:
+          type: string
+          readOnly: true
+        hall_number:
+          type: integer
+          readOnly: true
+        hall_type:
+          type: string
+          readOnly: true
+        date:
+          type: string
+          format: date
+          title: Дата
+        time:
+          type: string
+          format: time
+          title: Время
+        price_standard:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+          title: Цена (Стандарт)
+        price_comfort:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+          title: Цена (Комфорт)
+        price_vip:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+          title: Цена (VIP)
+      required:
+      - date
+      - hall_number
+      - hall_type
+      - id
+      - movie_title
+      - time
+    Ticket:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        booking:
+          type: integer
+          title: Бронирование
+        booking_info:
+          type: object
+          nullable: true
+          readOnly: true
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+          title: Цена
+        barcode:
+          type: string
+          readOnly: true
+          title: Штрихкод
+        status:
+          allOf:
+          - $ref: '#/components/schemas/TicketStatus'
+          title: Статус
+        issued_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Выдан
+        used_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          title: Использован
+      required:
+      - barcode
+      - booking
+      - booking_info
+      - id
+      - issued_at
+      - price
+      - used_at
+    TicketStatus:
+      enum:
+      - active
+      - used
+      - refunded
+      - cancelled
+      type: string
+      description: |-
+        * `active` - Активен
+        * `used` - Использован
+        * `refunded` - Возвращён
+        * `cancelled` - Аннулирован
+    TypeEnum:
+      enum:
+      - 2D
+      - 3D
+      - VIP
+      - IMAX
+      type: string
+      description: |-
+        * `2D` - 2D
+        * `3D` - 3D
+        * `VIP` - VIP
+        * `IMAX` - IMAX
+    User:
+      type: object
+      description: 'Публичный/личный профиль: роль — только чтение (защита от эскалирования).'
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          title: Имя пользователя
+          description: Обязательное поле. Не более 150 символов. Только буквы, цифры
+            и символы @/./+/-/_.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Адрес электронной почты
+          maxLength: 254
+        first_name:
+          type: string
+          title: Имя
+          maxLength: 150
+        last_name:
+          type: string
+          title: Фамилия
+          maxLength: 150
+        role:
+          allOf:
+          - $ref: '#/components/schemas/UserRole'
+          readOnly: true
+          title: Роль
+        phone:
+          type: string
+          title: Телефон
+          maxLength: 20
+        is_active:
+          type: boolean
+          readOnly: true
+          title: Активный
+          description: Отметьте, если пользователь должен считаться активным. Уберите
+            эту отметку вместо удаления учётной записи.
+        date_joined:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Дата регистрации
+      required:
+      - date_joined
+      - id
+      - is_active
+      - role
+      - username
+    UserAdmin:
+      type: object
+      description: CRUD пользователей менеджером/админом (роль редактируема).
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          title: Имя пользователя
+          description: Обязательное поле. Не более 150 символов. Только буквы, цифры
+            и символы @/./+/-/_.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Адрес электронной почты
+          maxLength: 254
+        first_name:
+          type: string
+          title: Имя
+          maxLength: 150
+        last_name:
+          type: string
+          title: Фамилия
+          maxLength: 150
+        role:
+          allOf:
+          - $ref: '#/components/schemas/UserRole'
+          title: Роль
+        phone:
+          type: string
+          title: Телефон
+          maxLength: 20
+        is_active:
+          type: boolean
+          title: Активный
+          description: Отметьте, если пользователь должен считаться активным. Уберите
+            эту отметку вместо удаления учётной записи.
+        date_joined:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Дата регистрации
+      required:
+      - date_joined
+      - id
+      - username
+    UserCreate:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          title: Имя пользователя
+          description: Обязательное поле. Не более 150 символов. Только буквы, цифры
+            и символы @/./+/-/_.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Адрес электронной почты
+          maxLength: 254
+        password:
+          type: string
+          writeOnly: true
+          minLength: 8
+        first_name:
+          type: string
+          title: Имя
+          maxLength: 150
+        last_name:
+          type: string
+          title: Фамилия
+          maxLength: 150
+        role:
+          allOf:
+          - $ref: '#/components/schemas/UserRole'
+          title: Роль
+        phone:
+          type: string
+          title: Телефон
+          maxLength: 20
+      required:
+      - id
+      - password
+      - username
+    UserRole:
+      enum:
+      - client
+      - cashier
+      - controller
+      - manager
+      - admin
+      type: string
+      description: |-
+        * `client` - Клиент
+        * `cashier` - Кассир
+        * `controller` - Контролёр
+        * `manager` - Менеджер
+        * `admin` - Администратор
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
+    tokenAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: Token-based authentication with required prefix "Token"

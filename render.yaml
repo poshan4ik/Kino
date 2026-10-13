@@ -1,0 +1,32 @@
+services:
+  web:
+    type: web
+    runtime: python
+    plan: free
+    buildCommand: bash build.sh
+    startCommand: gunicorn cinema_project.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 60
+    envVars:
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        sync: false
+      - key: CSRF_TRUSTED_ORIGINS
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: aurora-db
+          property: connectionString
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+  db:
+    type: postgres
+    plan: free
+    name: aurora-db

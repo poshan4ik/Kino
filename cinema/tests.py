@@ -47,6 +47,11 @@ class CinemaFixture(TestCase):
             username='cashier1', password='pass123457', role='cashier')
         self.manager = User.objects.create_user(
             username='manager1', password='pass123457', role='manager')
+        self.controller = User.objects.create_user(
+            username='controller1', password='pass123457', role='controller')
+        self.admin = User.objects.create_user(
+            username='admin1', password='pass123457', role='admin',
+            is_staff=True, is_superuser=True)
 
     def make_booking(self, user=None, seat=None, status='pending_payment', expires_at=None):
         return Booking.objects.create(
@@ -270,3 +275,504 @@ class FavoriteReviewTests(CinemaFixture):
         resp = self.client.get(f'/movie/{self.movie.id}/')
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'reviewForm')
+
+
+class SecurityRegressionTests(CinemaFixture):
+    """Этап 3: закрытие критичных уязвимостей безопасности"""
+
+    def test_update_me_cannot_escalate_role(self):
+        api = APIClient()
+        api.force_authenticate(user=self.client_user)
+        resp = api.patch('/api/users/update_me/', {'role': 'admin'}, format='json')
+        self.assertEqual(resp.status_code, 200)
+        self.client_user.refresh_from_db()
+        self.assertEqual(self.client_user.role, 'client')
+
+    def test_anonymous_cannot_create_admin(self):
+        api = APIClient()
+        resp = api.post('/api/users/', {
+            'username': 'hacker', 'password': 'x' * 9,
+            'email': 'h@e.ru', 'role': 'admin',
+        }, format='json')
+        self.assertIn(resp.status_code, [401, 403])
+        self.assertFalse(User.objects.filter(username='hacker').exists())
+
+    def test_client_cannot_list_users(self):
+        api = APIClient()
+        api.force_authenticate(user=self.client_user)
+        resp = api.get('/api/users/')
+        self.assertEqual(resp.status_code, 403)
+
+    def test_manager_can_list_users(self):
+        api = APIClient()
+        api.force_authenticate(user=self.manager)
+        resp = api.get('/api/users/')
+        self.assertEqual(resp.status_code, 200)
+
+    def test_client_cannot_see_foreign_bookings(self):
+        Booking.objects.create(
+            client=self.cashier, session=self.session, seat=self.seat1,
+            status='pending_payment',
+        )
+        own = self.make_booking(seat=self.seat2)
+        api = APIClient()
+        api.force_authenticate(user=self.client_user)
+        resp = api.get('/api/bookings/')
+        self.assertEqual(resp.status_code, 200)
+        results = resp.data['results'] if isinstance(resp.data, dict) else resp.data
+        ids = [b['id'] for b in results]
+        self.assertIn(own.id, ids)
+        self.assertEqual(len(ids), 1)
+
+    def test_client_cannot_see_foreign_tickets(self):
+        booking = Booking.objects.create(
+            client=self.cashier, session=self.session, seat=self.seat1,
+            status='paid',
+        )
+        from .views import issue_ticket
+        issue_ticket(booking, 'cash', self.cashier)
+        api = APIClient()
+        api.force_authenticate(user=self.client_user)
+        resp = api.get('/api/tickets/')
+        self.assertEqual(resp.status_code, 200)
+        results = resp.data['results'] if isinstance(resp.data, dict) else resp.data
+        self.assertEqual(len(results), 0)
+
+    def test_health_ok(self):
+        resp = self.client.get('/health/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('status', resp.json())
+
+
+class HoldFlowTests(CinemaFixture):
+    """Этап 3: сервис бронирования — прошедший сеанс, лимит, чужой зал, гонка"""
+
+    def test_hold_past_session_rejected(self):
+        past = Session.objects.create(
+            movie=self.movie, hall=self.hall,
+            date=date.today() - timedelta(days=1), time=time(12, 0),
+        )
+        api = APIClient()
+        api.force_authenticate(user=self.client_user)
+        resp = api.post('/api/bookings/hold/', {
+            'session': past.id, 'seats': [self.seat1.id],
+        }, format='json')
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('начался', str(resp.data))
+
+    def test_hold_foreign_hall_seat_rejected(self):
+        other_hall = Hall.objects.create(number=2, type='3D', capacity=10)
+        foreign = Seat.objects.create(hall=other_hall, row=1, number=1)
+        api = APIClient()
+        api.force_authenticate(user=self.client_user)
+        resp = api.post('/api/bookings/hold/', {
+            'session': self.session.id, 'seats': [foreign.id],
+        }, format='json')
+        self.assertEqual(resp.status_code, 400)
+
+    def test_hold_seat_limit_enforced(self):
+        seats = []
+        for i in range(3, 14):
+            seats.append(Seat.objects.create(hall=self.hall, row=2, number=i))
+        api = APIClient()
+        api.force_authenticate(user=self.client_user)
+        resp = api.post('/api/bookings/hold/', {
+            'session': self.session.id, 'seats': [s.id for s in seats],
+        }, format='json')
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('Максимум', str(resp.data))
+
+    def test_hold_seats_all_or_nothing_on_conflict(self):
+        self.make_booking(seat=self.seat1)
+        api = APIClient()
+        api.force_authenticate(user=self.client_user)
+        resp = api.post('/api/bookings/hold/', {
+            'session': self.session.id, 'seats': [self.seat1.id, self.seat2.id],
+        }, format='json')
+        self.assertEqual(resp.status_code, 400)
+        self.assertFalse(
+            Booking.objects.filter(session=self.session, seat=self.seat2).exists()
+        )
+
+    def test_concurrent_hold_second_fails(self):
+        from . import services
+        from .models import Seat as SeatModel
+        seats = []
+        for i in range(3, 5):
+            seats.append(SeatModel.objects.create(hall=self.hall, row=1, number=i))
+        services.create_hold(self.client_user, self.session, [s.id for s in seats])
+        with self.assertRaises(services.BookingError):
+            services.create_hold(self.cashier, self.session, [s.id for s in seats])
+
+
+class PayRefundTests(CinemaFixture):
+    """Этап 3/4: оплата, повторная оплата, возврат и права ролей"""
+
+    def setUp(self):
+        super().setUp()
+        self.api = APIClient()
+        self.api.force_authenticate(user=self.client_user)
+        self.booking = self.make_booking(
+            status='pending_payment',
+            expires_at=timezone.now() + timedelta(minutes=10),
+        )
+
+    def _pay(self, user=None, method='online', ids=None):
+        api = APIClient()
+        api.force_authenticate(user=user or self.client_user)
+        return api.post('/api/bookings/pay/', {
+            'booking_ids': ids or [self.booking.id], 'method': method,
+        }, format='json')
+
+    def test_pay_online_creates_ticket_and_payment(self):
+        resp = self._pay()
+        self.assertEqual(resp.status_code, 201)
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.status, 'paid')
+        self.assertTrue(Ticket.objects.filter(booking=self.booking).exists())
+        self.assertTrue(Payment.objects.filter(
+            ticket__booking=self.booking, status='completed').exists())
+
+    def test_double_pay_rejected(self):
+        self._pay()
+        resp = self._pay()
+        self.assertEqual(resp.status_code, 400)
+
+    def test_pay_expired_hold_rejected(self):
+        self.booking.expires_at = timezone.now() - timedelta(minutes=1)
+        self.booking.save(update_fields=['expires_at'])
+        resp = self._pay()
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('истекло', str(resp.data))
+
+    def test_client_cannot_pay_foreign_booking(self):
+        Booking.objects.create(
+            client=self.cashier, session=self.session, seat=self.seat2,
+            status='pending_payment',
+            expires_at=timezone.now() + timedelta(minutes=10),
+        )
+        foreign_id = Booking.objects.exclude(pk=self.booking.pk).first().id
+        resp = self._pay(ids=[foreign_id])
+        self.assertEqual(resp.status_code, 403)
+
+    def test_refund_by_cashier(self):
+        self._pay()
+        api = APIClient()
+        api.force_authenticate(user=self.cashier)
+        resp = api.post(f'/api/bookings/{self.booking.id}/refund/')
+        self.assertEqual(resp.status_code, 200)
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.status, 'cancelled')
+        self.assertEqual(self.booking.ticket.status, 'refunded')
+        self.assertEqual(Payment.objects.filter(
+            ticket__booking=self.booking, status='refunded').count(), 1)
+
+    def test_controller_cannot_refund(self):
+        self._pay()
+        api = APIClient()
+        api.force_authenticate(user=self.controller)
+        resp = api.post(f'/api/bookings/{self.booking.id}/refund/')
+        self.assertEqual(resp.status_code, 403)
+
+    def test_client_cannot_refund_others(self):
+        self._pay()
+        booking2 = Booking.objects.create(
+            client=self.cashier, session=self.session, seat=self.seat2,
+            status='paid',
+        )
+        resp = self.api.post(f'/api/bookings/{booking2.id}/refund/')
+        self.assertEqual(resp.status_code, 403)
+
+    def test_refund_after_session_start_rejected(self):
+        self._pay()
+        Session.objects.filter(pk=self.session.pk).update(
+            date=date.today() - timedelta(days=1), time=time(1, 0))
+        api = APIClient()
+        api.force_authenticate(user=self.cashier)
+        resp = api.post(f'/api/bookings/{self.booking.id}/refund/')
+        self.assertEqual(resp.status_code, 400)
+
+    def test_client_cancel_own_pending(self):
+        resp = self.api.post(
+            f'/api/bookings/{self.booking.id}/cancel_own/')
+        self.assertEqual(resp.status_code, 200)
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.status, 'cancelled')
+
+    def test_client_cancel_foreign_forbidden(self):
+        Booking.objects.create(
+            client=self.cashier, session=self.session, seat=self.seat2,
+            status='pending_payment',
+        )
+        other = Booking.objects.exclude(pk=self.booking.pk).first()
+        resp = self.api.post(f'/api/bookings/{other.id}/cancel_own/')
+        # чужая бронь невидима клиенту (queryset отфильтрован) — 404
+        self.assertEqual(resp.status_code, 404)
+
+
+class TicketCheckTests(CinemaFixture):
+    """Проверка билетов контроллёром по штрихкоду"""
+
+    def setUp(self):
+        super().setUp()
+        self.booking = self.make_booking(status='paid')
+        from .views import issue_ticket
+        self.ticket = issue_ticket(self.booking, 'cash', self.cashier)
+        self.api = APIClient()
+        self.api.force_authenticate(user=self.controller)
+
+    def test_valid_ticket_marks_used(self):
+        resp = self.api.post('/api/tickets/check_by_barcode/', {
+            'barcode': self.ticket.barcode,
+        }, format='json')
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.data['valid'])
+        self.ticket.refresh_from_db()
+        self.assertEqual(self.ticket.status, 'used')
+
+    def test_used_ticket_rejected(self):
+        self.ticket.mark_used()
+        resp = self.api.post('/api/tickets/check_by_barcode/', {
+            'barcode': self.ticket.barcode,
+        }, format='json')
+        self.assertEqual(resp.status_code, 400)
+        self.assertFalse(resp.data['valid'])
+
+    def test_unknown_barcode_404(self):
+        resp = self.api.post('/api/tickets/check_by_barcode/', {
+            'barcode': 'NOPE123',
+        }, format='json')
+        self.assertEqual(resp.status_code, 404)
+
+    def test_client_cannot_check(self):
+        api = APIClient()
+        api.force_authenticate(user=self.client_user)
+        resp = api.post('/api/tickets/check_by_barcode/', {
+            'barcode': self.ticket.barcode,
+        }, format='json')
+        self.assertEqual(resp.status_code, 403)
+
+
+class DashboardReportTests(CinemaFixture):
+    """Дашборд, отчёты и CSV-экспорт (менеджер/админ)"""
+
+    def setUp(self):
+        super().setUp()
+        self.booking = self.make_booking(status='paid')
+        from .views import issue_ticket
+        self.ticket = issue_ticket(self.booking, 'cash', self.cashier)
+
+    def test_dashboard_forbidden_for_client(self):
+        api = APIClient()
+        api.force_authenticate(user=self.client_user)
+        resp = api.get('/api/dashboard/stats/')
+        self.assertEqual(resp.status_code, 403)
+
+    def test_dashboard_totals(self):
+        api = APIClient()
+        api.force_authenticate(user=self.manager)
+        resp = api.get('/api/dashboard/stats/')
+        self.assertEqual(resp.status_code, 200)
+        data = resp.data
+        self.assertEqual(float(data['revenue']), float(self.ticket.price))
+        self.assertEqual(data['tickets_sold'], 1)
+
+    def test_reports_page_and_csv_export(self):
+        self.client.force_login(self.manager)
+        resp = self.client.get(reverse('staff_reports'))
+        self.assertEqual(resp.status_code, 200)
+        resp = self.client.get(reverse('staff_reports_export'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp['Content-Type'], 'text/csv; charset=utf-8')
+        body = resp.content.decode('utf-8-sig')
+        self.assertIn('Фильм', body)
+
+    def test_reports_period_filter(self):
+        self.client.force_login(self.manager)
+        today = timezone.localdate()
+        resp = self.client.get(reverse('staff_reports'), {
+            'date_from': (today - timedelta(days=3)).isoformat(),
+            'date_to': today.isoformat(),
+        })
+        self.assertEqual(resp.status_code, 200)
+        resp = self.client.get(reverse('staff_reports'), {
+            'date_from': '2020-01-01', 'date_to': '2020-01-31',
+        })
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'За период продаж нет')
+
+
+class ProfileFunctionTests(CinemaFixture):
+    """Смена пароля и редактирование профиля (Этап 4)"""
+
+    def test_password_change_ok(self):
+        self.client.force_login(self.client_user)
+        resp = self.client.post(reverse('profile_password'), {
+            'old_password': 'pass123457',
+            'new_password1': 'newpass12345',
+            'new_password2': 'newpass12345',
+        })
+        self.assertRedirects(resp, reverse('profile'))
+        self.client_user.refresh_from_db()
+        self.assertTrue(self.client_user.check_password('newpass12345'))
+
+    def test_password_change_wrong_old(self):
+        self.client.force_login(self.client_user)
+        resp = self.client.post(reverse('profile_password'), {
+            'old_password': 'wrongpass1',
+            'new_password1': 'newpass12345',
+            'new_password2': 'newpass12345',
+        })
+        self.assertEqual(resp.status_code, 302)
+        self.client_user.refresh_from_db()
+        self.assertTrue(self.client_user.check_password('pass123457'))
+
+    def test_profile_edit(self):
+        self.client.force_login(self.client_user)
+        resp = self.client.post(reverse('profile_edit'), {
+            'first_name': 'Иван', 'last_name': 'Петров',
+            'email': 'ivan@example.com', 'phone': '+77001234567',
+        })
+        self.assertRedirects(resp, reverse('profile'))
+        self.client_user.refresh_from_db()
+        self.assertEqual(self.client_user.first_name, 'Иван')
+        self.assertEqual(self.client_user.phone, '+77001234567')
+
+
+class SeedDemoCommandTests(CinemaFixture):
+    """Идемпотентность seed_demo (Этап 4)"""
+
+    def test_seed_demo_twice_idempotent(self):
+        call_command('seed_demo', verbosity=0)
+        users = User.objects.count()
+        sessions = Session.objects.count()
+        movies = Movie.objects.count()
+        call_command('seed_demo', verbosity=0)
+        self.assertEqual(User.objects.count(), users)
+        self.assertEqual(Session.objects.count(), sessions)
+        self.assertEqual(Movie.objects.count(), movies)
+        self.assertTrue(User.objects.filter(username='admin').exists())
+        self.assertTrue(User.objects.filter(username='manager').exists())
+
+
+class ExtraCoverageTests(CinemaFixture):
+    """Регистрация (RegisterForm) и тег admin_stats"""
+
+    def _form_data(self, **overrides):
+        data = {
+            'username': 'newuser1',
+            'first_name': 'Иван',
+            'last_name': 'Иванов',
+            'email': 'new@example.com',
+            'phone': '+77001234567',
+            'password1': 'StrongPass123',
+            'password2': 'StrongPass123',
+            'terms': True,
+        }
+        data.update(overrides)
+        return data
+
+    def test_register_form_valid_creates_client(self):
+        from .forms import RegisterForm
+        form = RegisterForm(data=self._form_data())
+        self.assertTrue(form.is_valid(), form.errors)
+        user = form.save()
+        self.assertEqual(user.role, 'client')
+        self.assertEqual(user.phone, '+77001234567')
+        self.assertTrue(user.check_password('StrongPass123'))
+
+    def test_register_form_duplicate_email(self):
+        from .forms import RegisterForm
+        User.objects.create_user(
+            username='taken', password='x' * 9, email='new@example.com')
+        form = RegisterForm(data=self._form_data())
+        self.assertFalse(form.is_valid())
+        self.assertIn('email', form.errors)
+
+    def test_register_form_bad_phone(self):
+        from .forms import RegisterForm
+        form = RegisterForm(data=self._form_data(phone='12345'))
+        self.assertFalse(form.is_valid())
+        self.assertIn('phone', form.errors)
+
+    def test_register_form_requires_terms(self):
+        from .forms import RegisterForm
+        form = RegisterForm(data=self._form_data(terms=False))
+        self.assertFalse(form.is_valid())
+        self.assertIn('terms', form.errors)
+
+    def test_register_form_phone_cleanup(self):
+        from .forms import RegisterForm
+        form = RegisterForm(data=self._form_data(phone='+7 (700) 123-45-67'))
+        self.assertTrue(form.is_valid(), form.errors)
+        user = form.save()
+        self.assertEqual(user.phone, '+77001234567')
+
+    def test_admin_stats_tag(self):
+        from .templatetags.admin_stats import admin_stats
+        self.make_booking(status='paid')
+        stats = admin_stats()
+        self.assertIn('movies', stats)
+        self.assertIn('sessions_today', stats)
+        self.assertIn('bookings_active', stats)
+        self.assertEqual(stats['movies'], 1)
+        self.assertEqual(stats['bookings_active'], 0)
+
+
+class RoleMatrixTests(CinemaFixture):
+    """Матрица ролей: ключевые эндпоинты × роли (200/401/403)"""
+
+    ANON_ALLOWED_GET = ['/', '/login/', '/register/', '/health/',
+                        '/api/movies/', '/api/genres/', '/api/sessions/']
+
+    def test_anon_allowed_endpoints(self):
+        for url in self.ANON_ALLOWED_GET:
+            resp = self.client.get(url)
+            self.assertIn(resp.status_code, [200, 302], url)
+
+    def test_anon_denied_endpoints(self):
+        for url in ['/api/bookings/', '/api/tickets/', '/api/payments/',
+                    '/api/users/', '/api/dashboard/stats/', '/profile/']:
+            resp = self.client.get(url)
+            self.assertIn(resp.status_code, [401, 403, 302], url)
+
+    def matrix_get(self, url, expected):
+        for user_key, want in expected.items():
+            user = getattr(self, user_key)
+            api = APIClient()
+            api.force_authenticate(user=user)
+            resp = api.get(url)
+            self.assertEqual(
+                resp.status_code, want,
+                f'{url} для {user_key}: {resp.status_code} != {want}',
+            )
+
+    def test_users_endpoint_matrix(self):
+        self.matrix_get('/api/users/', {
+            'client_user': 403, 'cashier': 403, 'controller': 403,
+            'manager': 200, 'admin': 200,
+        })
+
+    def test_dashboard_matrix(self):
+        self.matrix_get('/api/dashboard/stats/', {
+            'client_user': 403, 'cashier': 403, 'controller': 403,
+            'manager': 200, 'admin': 200,
+        })
+
+    def test_bookings_endpoint_all_roles_200(self):
+        self.matrix_get('/api/bookings/', {
+            'client_user': 200, 'cashier': 200, 'controller': 200,
+            'manager': 200, 'admin': 200,
+        })
+
+    def test_staff_pages_matrix(self):
+        self.client.force_login(self.cashier)
+        self.assertEqual(self.client.get('/manager/').status_code, 403)
+        self.client.force_login(self.controller)
+        self.assertEqual(self.client.get('/cashier/').status_code, 403)
+        self.assertEqual(self.client.get('/manager/').status_code, 403)
+        self.client.force_login(self.controller)
+        self.assertEqual(self.client.get('/controller/').status_code, 200)
+        self.client.force_login(self.admin)
+        for url in ['/manager/', '/cashier/', '/controller/']:
+            self.assertEqual(self.client.get(url).status_code, 200, url)

@@ -1,10 +1,23 @@
 from django.db.models import Avg
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from .models import User, Genre, Movie, Hall, Seat, Session, Booking, Ticket, Payment, Favorite, Review
 import uuid
 
 
 class UserSerializer(serializers.ModelSerializer):
+    """Публичный/личный профиль: роль — только чтение (защита от эскалирования)."""
+
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'phone', 'is_active', 'date_joined']
+        read_only_fields = ['id', 'date_joined', 'role', 'is_active']
+
+
+class UserAdminSerializer(serializers.ModelSerializer):
+    """CRUD пользователей менеджером/админом (роль редактируема)."""
+
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'phone', 'is_active', 'date_joined']
@@ -33,7 +46,8 @@ class GenreSerializer(serializers.ModelSerializer):
         model = Genre
         fields = ['id', 'name', 'description', 'movies_count']
     
-    def get_movies_count(self, obj):
+    @extend_schema_field(OpenApiTypes.INT)
+    def get_movies_count(self, obj) -> int:
         return obj.movies.count()
 
 
@@ -49,9 +63,11 @@ class MovieSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'genre', 'genre_name', 'duration', 'age_rating', 'description', 'poster', 'poster_url', 'trailer_url', 'status', 'sessions_count', 'rating', 'reviews_count', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
     
-    def get_sessions_count(self, obj):
+    @extend_schema_field(OpenApiTypes.INT)
+    def get_sessions_count(self, obj) -> int:
         return obj.sessions.filter(is_active=True).count()
-    
+
+    @extend_schema_field(OpenApiTypes.DOUBLE)
     def get_rating(self, obj):
         from .models import Review
         rating = getattr(obj, 'average_rating', None)
@@ -61,13 +77,15 @@ class MovieSerializer(serializers.ModelSerializer):
             )['avg']
         return round(float(rating), 1) if rating is not None else None
 
-    def get_reviews_count(self, obj):
+    @extend_schema_field(OpenApiTypes.INT)
+    def get_reviews_count(self, obj) -> int:
         from .models import Review
         count = getattr(obj, 'reviews_count', None)
         if count is None:
             count = Review.objects.filter(movie=obj).count()
         return count
 
+    @extend_schema_field(OpenApiTypes.URI)
     def get_poster_url(self, obj):
         if obj.poster:
             request = self.context.get('request')
@@ -87,6 +105,7 @@ class MovieListSerializer(serializers.ModelSerializer):
         model = Movie
         fields = ['id', 'title', 'genre_name', 'duration', 'age_rating', 'poster_url', 'trailer_url', 'status', 'rating', 'reviews_count', 'next_sessions']
     
+    @extend_schema_field(OpenApiTypes.URI)
     def get_poster_url(self, obj):
         if obj.poster:
             request = self.context.get('request')
@@ -94,6 +113,7 @@ class MovieListSerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(obj.poster.url)
         return None
 
+    @extend_schema_field(OpenApiTypes.DOUBLE)
     def get_rating(self, obj):
         from .models import Review
         rating = getattr(obj, 'average_rating', None)
@@ -103,17 +123,18 @@ class MovieListSerializer(serializers.ModelSerializer):
             )['avg']
         return round(float(rating), 1) if rating is not None else None
 
-    def get_reviews_count(self, obj):
+    @extend_schema_field(OpenApiTypes.INT)
+    def get_reviews_count(self, obj) -> int:
         from .models import Review
         count = getattr(obj, 'reviews_count', None)
         if count is None:
             count = Review.objects.filter(movie=obj).count()
         return count
     
-    def get_next_sessions(self, obj):
-        from django.utils import timezone
-        now = timezone.now()
-        sessions = obj.sessions.filter(date__gte=now.date(), is_active=True).order_by('date', 'time')[:5]
+    @extend_schema_field({'type': 'array', 'items': {'type': 'object'}})
+    def get_next_sessions(self, obj) -> list:
+        # На list сеансы уже prefetch'нуты (select_related hall/movie) — без N+1
+        sessions = obj.sessions.all()[:5]
         return SessionListSerializer(sessions, many=True, context=self.context).data
 
 
@@ -126,10 +147,12 @@ class HallSerializer(serializers.ModelSerializer):
         fields = ['id', 'number', 'type', 'capacity', 'description', 'seats_count', 'sessions_count']
         read_only_fields = ['id']
     
-    def get_seats_count(self, obj):
+    @extend_schema_field(OpenApiTypes.INT)
+    def get_seats_count(self, obj) -> int:
         return obj.seats.count()
     
-    def get_sessions_count(self, obj):
+    @extend_schema_field(OpenApiTypes.INT)
+    def get_sessions_count(self, obj) -> int:
         return obj.sessions.filter(is_active=True).count()
 
 
@@ -154,10 +177,12 @@ class SessionSerializer(serializers.ModelSerializer):
         fields = ['id', 'movie', 'movie_title', 'movie_duration', 'movie_age_rating', 'hall', 'hall_number', 'hall_type', 'date', 'time', 'price_standard', 'price_comfort', 'price_vip', 'is_active', 'available_seats_count', 'seats_layout', 'created_at']
         read_only_fields = ['id', 'created_at']
     
-    def get_available_seats_count(self, obj):
+    @extend_schema_field(OpenApiTypes.INT)
+    def get_available_seats_count(self, obj) -> int:
         return obj.get_available_seats().count()
     
-    def get_seats_layout(self, obj):
+    @extend_schema_field(OpenApiTypes.OBJECT)
+    def get_seats_layout(self, obj) -> dict:
         seats = obj.hall.seats.all().order_by('row', 'number')
         booked_seat_ids = set(obj.bookings.filter(
             status__in=['created', 'pending_payment', 'paid', 'used']
@@ -199,6 +224,7 @@ class BookingSerializer(serializers.ModelSerializer):
         fields = ['id', 'client', 'client_name', 'client_username', 'session', 'session_info', 'seat', 'seat_info', 'status', 'created_at', 'expires_at', 'ticket']
         read_only_fields = ['id', 'client', 'created_at', 'expires_at']
     
+    @extend_schema_field({'type': 'object', 'nullable': True})
     def get_ticket(self, obj):
         if hasattr(obj, 'ticket'):
             return TicketSerializer(obj.ticket, context=self.context).data
@@ -210,57 +236,42 @@ class BookingCreateSerializer(serializers.ModelSerializer):
         model = Booking
         fields = ['session', 'seat']
         validators = []
-    
+
     def validate(self, attrs):
+        from . import services
         session = attrs['session']
         seat = attrs['seat']
-        
+
         if seat.hall != session.hall:
             raise serializers.ValidationError('Место не принадлежит залу этого сеанса')
-        
-        if not session.is_active:
-            raise serializers.ValidationError('Сеанс неактивен')
-        
+
+        try:
+            services.validate_session_bookable(session)
+        except services.BookingError as exc:
+            raise serializers.ValidationError(exc.message)
+
         existing = Booking.objects.filter(
             session=session,
             seat=seat,
-            status__in=['created', 'pending_payment', 'paid', 'used']
+            status__in=services.ACTIVE_BOOKING_STATUSES
         ).exists()
-        
+
         if existing:
             raise serializers.ValidationError('Это место уже забронировано')
-        
+
         return attrs
-    
+
     def create(self, validated_data):
-        validated_data['client'] = self.context['request'].user
-        validated_data['status'] = 'pending_payment'
-        from django.utils import timezone
-        from datetime import timedelta
-        validated_data['expires_at'] = timezone.now() + timedelta(minutes=15)
-
-        from django.db import transaction
-        from django.db.utils import IntegrityError
-        from django.db import connection
-
+        # «Всё или ничего» через общий сервис (лимит/блокировки/истечение)
+        from . import services
+        user = self.context['request'].user
         session = validated_data['session']
         seat = validated_data['seat']
-
         try:
-            with transaction.atomic():
-                active_statuses = ['created', 'pending_payment', 'paid', 'used']
-                bookings_qs = Booking.objects.filter(
-                    session=session, seat=seat, status__in=active_statuses
-                )
-                if connection.features.has_select_for_update:
-                    bookings_qs = bookings_qs.select_for_update()
-                if bookings_qs.exists():
-                    raise serializers.ValidationError('Это место уже забронировано')
-                return super().create(validated_data)
-        except IntegrityError:
-            raise serializers.ValidationError(
-                'Это место только что забронировали, выберите другое'
-            )
+            bookings, _ = services.create_hold(user, session, [seat.id])
+        except services.BookingError as exc:
+            raise serializers.ValidationError(exc.message)
+        return bookings[0]
 
 
 class TicketSerializer(serializers.ModelSerializer):
@@ -271,6 +282,7 @@ class TicketSerializer(serializers.ModelSerializer):
         fields = ['id', 'booking', 'booking_info', 'price', 'barcode', 'status', 'issued_at', 'used_at']
         read_only_fields = ['id', 'barcode', 'issued_at', 'used_at']
 
+    @extend_schema_field({'type': 'object', 'nullable': True})
     def get_booking_info(self, obj):
         if self.context.get('nested'):
             return None
@@ -343,6 +355,32 @@ class ReviewSerializer(serializers.ModelSerializer):
         model = Review
         fields = ['id', 'user', 'username', 'movie', 'rating', 'comment', 'created_at']
         read_only_fields = ['id', 'user', 'created_at']
+
+
+class MovieReviewsSummarySerializer(serializers.Serializer):
+    """Сводка отзывов фильма: рейтинг, количество, список."""
+    rating = serializers.FloatField(allow_null=True)
+    count = serializers.IntegerField()
+    reviews = ReviewSerializer(many=True)
+
+
+class HoldRequestSerializer(serializers.Serializer):
+    """Тело POST /api/bookings/hold/."""
+    session = serializers.IntegerField()
+    seats = serializers.ListField(
+        child=serializers.IntegerField(), min_length=1, max_length=10,
+        help_text='ID мест (не больше BOOKING_MAX_SEATS)',
+    )
+
+
+class PayRequestSerializer(serializers.Serializer):
+    """Тело POST /api/bookings/pay/."""
+    booking_ids = serializers.ListField(
+        child=serializers.IntegerField(), min_length=1, max_length=6,
+    )
+    method = serializers.ChoiceField(
+        choices=['cash', 'card', 'online'], default='online',
+    )
 
 
 class ReviewCreateSerializer(serializers.ModelSerializer):

@@ -1,0 +1,13 @@
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DJANGO_SECRET_KEY: local-dev-secret-change-me
+      DEBUG: "True"
+      USE_SQLITE: "1"
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: admin12345
+      ADMIN_EMAIL: admin@aurora.kz
+    # SQLite внутри контейнера эфемерна; для продакшена задайте DATABASE_URL (PostgreSQL)

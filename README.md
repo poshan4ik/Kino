@@ -1,255 +1,113 @@
-# АИС «Аврора» — Автоматизированная информационная система кинотеатра
+# АИС «Аврора» — веб-система кинотеатра
 
-Полноценный веб-проект на Django + DRF + Bootstrap 5 с кастомной дизайн-системой.
+Django + DRF: афиша, онлайн-бронь мест с QR-билетами, касса, контроль входа, панель менеджера и админка. Премиальный тёмный дизайн без фреймворков (кастомная дизайн-система в `static/css/main.css`).
 
-## 🎬 Функционал
+![Главная страница](docs/screenshots/home.png)
+![Выбор мест](docs/screenshots/booking.png)
+![Панель менеджера](docs/screenshots/manager.png)
 
-- **Афиша фильмов** — публичная страница с поиском и фильтрами по жанру/дате
-- **Бронирование мест** — интерактивная схема зала с выбором мест
-- **Касса кассира** — быстрый поиск сеансов, продажа/возврат билетов
-- **Контроль билетов** — сканирование штрихкодов, проверка действительности
-- **Панель менеджера** — дашборд с метриками, графики продаж, загрузка залов
-- **Личный кабинет клиента** — история броней, билеты, платежи
-- **Админка Django** — полное управление всеми сущностями
+## Возможности
 
-## 👥 Роли пользователей
+- **Афиша** — поиск/фильтры по жанру, дате, формату без перезагрузки, расписание по дням, трейлеры, отзывы и оценки, избранное
+- **Бронирование** — интерактивная схема зала, атомарное удержание мест («всё или ничего»), таймер 15 минут, оплата одним запросом, билет с QR/штрихкодом
+- **Касса** — продажа, подтверждение оплаты, возврат до начала сеанса
+- **Контроль** — сканирование/ввод штрихкода, защита от повторного входа
+- **Менеджер** — дашборд с метриками, отчёты за 30 дней, экспорт CSV, справочники (фильмы, сеансы, залы, пользователи)
+- **Кабинет клиента** — брони/билеты/платежи, отмена брони, смена пароля, редактирование профиля
+- **Админка Django** — тёмная тема, сводка KPI, журнал аудита
+- **Эксплуатация** — `seed_demo`, `expire_bookings`, `ensure_admin`, `/health/`, Swagger `/api/docs/`, страницы 404/500
 
-| Роль | Права |
-|------|-------|
-| **Клиент** | Просмотр афиши, бронирование, покупка билетов, личный кабинет |
-| **Кассир** | Поиск сеансов, продажа билетов кассой, возврат билетов |
-| **Контролёр** | Проверка билетов по штрихкоду, контроль входа |
-| **Менеджер** | CRUD фильмов/жанров/залов, дашборд, отчёты |
-| **Администратор** | Полный доступ, управление пользователями |
+## Стек
 
-## 🛠 Стек технологий
+| Слой | Технологии |
+|---|---|
+| Backend | Python 3.11/3.12, Django 4.2, DRF 3.15, drf-spectacular |
+| БД | PostgreSQL (прод) / SQLite (разработка), `dj-database-url` |
+| Frontend | Django Templates, vanilla JS, CSS-переменные (Bebas Neue + Inter) |
+| Auth | Session + Token, 5 ролей (client/cashier/controller/manager/admin) |
+| Прод | Gunicorn, WhiteNoise, Docker (опционально) |
 
-- **Backend**: Python 3.11+, Django 4.2, Django REST Framework 3.14
-- **Database**: PostgreSQL (продакшн) / SQLite (разработка)
-- **Frontend**: Django Templates, Bootstrap 5, Chart.js
-- **Auth**: Session + Token Authentication
-- **Deployment**: Gunicorn, Nginx (рекомендуется)
+## Роли
 
-## 📁 Структура проекта
+| Роль | Доступ |
+|---|---|
+| Клиент | афиша, бронь, оплата, кабинет, отзывы, избранное |
+| Кассир | касса, продажа/возврат, брони/билеты/продажи |
+| Контролёр | проверка билетов, сканер |
+| Менеджер | всё выше + дашборд, отчёты, справочники, пользователи |
+| Администратор | менеджер + Django-админка |
 
-```
-cinema_project/
-├── cinema_project/          # Настройки Django
-│   ├── settings.py
-│   ├── urls.py
-│   ├── wsgi.py
-│   └── asgi.py
-├── cinema/                  # Основное приложение
-│   ├── models.py           # Все модели данных
-│   ├── views.py            # DRF ViewSets
-│   ├── serializers.py      # DRF Serializers
-│   ├── permissions.py      # Кастомные permissions
-│   ├── urls.py             # API маршруты
-│   ├── admin.py            # Админка
-│   ├── apps.py
-│   └── migrations/
-├── templates/               # Django шаблоны
-│   ├── base.html           # Базовый шаблон с дизайн-системой
-│   ├── home.html           # Афиша
-│   ├── movie_detail.html   # Страница фильма
-│   ├── booking.html        # Выбор мест
-│   ├── profile.html        # Личный кабинет
-│   ├── cashier.html        # Касса
-│   ├── controller.html     # Контроль билетов
-│   ├── manager.html        # Панель менеджера
-│   ├── login.html          # Вход
-│   └── register.html       # Регистрация
-├── static/
-│   ├── css/main.css        # Кастомные стили (дизайн-система)
-│   └── js/main.js          # Клиентский JS
-├── media/                   # Загруженные файлы (постеры)
-├── manage.py
-├── requirements.txt
-├── .env                     # Переменные окружения
-└── README.md
-```
+Подробная матрица: [docs/ROLES.md](docs/ROLES.md).
 
-## 🚀 Быстрый старт
-
-### 1. Клонирование и окружение
+## Быстрый старт
 
 ```bash
 git clone <repository-url>
 cd cinema_project
 
-# Создание виртуального окружения
 python -m venv venv
-source venv/bin/activate  # Linux/macOS
-# или
-venv\Scripts\activate     # Windows
+# Linux/macOS: source venv/bin/activate
+# Windows:     venv\Scripts\activate
 
-# Установка зависимостей
 pip install -r requirements.txt
-```
+cp .env.example .env          # при необходимости отредактируйте
 
-### 2. Настройка переменных окружения
-
-Скопируйте `.env.example` в `.env` и отредактируйте:
-
-```bash
-cp .env.example .env
-```
-
-Основные переменные:
-```env
-DJANGO_SECRET_KEY=your-secret-key-here
-DEBUG=True
-ALLOWED_HOSTS=localhost,127.0.0.1
-
-# Для PostgreSQL (продакшн)
-USE_SQLITE=False
-POSTGRES_DB=cinema_db
-POSTGRES_USER=cinema_user
-POSTGRES_PASSWORD=secure_password
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-```
-
-### 3. Миграции и суперпользователь
-
-```bash
-# Применение миграций
 python manage.py migrate
-
-# Создание суперпользователя (администратор)
-python manage.py createsuperuser
-
-# (Опционально) Загрузка тестовых данных
-python manage.py loaddata fixtures/initial_data.json
+python manage.py seed_demo    # демо-данные: роли, жанры, фильмы, залы, сеансы
+python manage.py runserver    # http://127.0.0.1:8000/
 ```
 
-### 4. Запуск сервера разработки
+### Демо-аккаунты (после `seed_demo`)
+
+| Логин | Пароль | Роль |
+|---|---|---|
+| `admin` | `admin12345` | администратор |
+| `client` | `client12345` | клиент |
+| `cashier` | `cashier12345` | кассир |
+| `controller` | `controller12345` | контролёр |
+| `manager` | `manager12345` | менеджер |
+
+Пароли демо-аккаунтов выводятся командой `seed_demo` — не используйте их в проде.
+
+## Переменные окружения
+
+Все настройки читаются из окружения/`.env` (см. [.env.example](.env.example)):
+`DJANGO_SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, `USE_SQLITE` / `DATABASE_URL` / `POSTGRES_*`, `SECURE_SSL_REDIRECT`, `BOOKING_MAX_SEATS`, `BOOKING_HOLD_MINUTES`, `SESSION_BUFFER_MINUTES`, `ADMIN_USERNAME/EMAIL/PASSWORD`.
+
+## Тесты и качество
 
 ```bash
-python manage.py runserver
+python manage.py test cinema                 # 57 тестов
+python -m coverage run manage.py test cinema # замер покрытия
+python -m coverage report --include='cinema/*'  # текущее покрытие: 82%
 ```
 
-Откройте http://127.0.0.1:8000/
-
-## 🔧 Команды управления
+## Полезные команды
 
 ```bash
-# Проверка проекта
-python manage.py check
-
-# Создание миграций после изменений моделей
-python manage.py makemigrations cinema
-
-# Сбор статики (для продакшена)
-python manage.py collectstatic
-
-# Запуск тестов
-python manage.py test
-
-# Очистка просроченных броней (можно добавить в cron)
-python manage.py expire_bookings
+python manage.py expire_bookings             # отмена просроченных броней (cron)
+python manage.py ensure_admin                # автосоздание суперпользователя (deploy)
+python manage.py seed_demo                   # идемпотентная демо-наполнение
+python manage.py collectstatic               # сбор статики
+python manage.py spectacular --file schema.yml  # OpenAPI-схема
 ```
 
-## 🌐 API Endpoints
+## Деплой
 
-Базовый URL: `/api/`
+См. [CHANGELOG.md](CHANGELOG.md) и артефакты в корне: `build.sh`, `Procfile`, `render.yaml`, `Dockerfile`, `docker-compose.yml`, `.python-version`.
 
-### Публичные (без авторизации)
-- `GET /api/genres/` — список жанров
-- `GET /api/movies/` — список фильмов (с фильтрами `?genre=&status=&search=`)
-- `GET /api/movies/{id}/` — детали фильма
-- `GET /api/movies/{id}/sessions/` — сеансы фильма
-- `GET /api/halls/` — список залов
-- `GET /api/sessions/` — сеансы (фильтры `?date_from=&date_to=&movie=&hall=`)
-- `GET /api/sessions/by_date/?date=2024-01-15` — сеансы на дату
-- `GET /api/sessions/{id}/seats/` — схема зала для сеанса
+Кратко: задайте `DEBUG=False`, `DJANGO_SECRET_KEY`, `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, `DATABASE_URL`/`POSTGRES_*`, `SECURE_SSL_REDIRECT=True`; выполните `./build.sh`; cron: `python manage.py expire_bookings` каждые 5 минут.
 
-### Авторизованные (токен/сессия)
-- `GET /api/users/me/` — профиль текущего пользователя
-- `PATCH /api/users/update_me/` — обновление профиля
-- `POST /api/bookings/` — создание бронирования
-- `GET /api/bookings/` — мои бронирования
-- `POST /api/bookings/{id}/confirm_payment/` — оплата (кассир+)
-- `POST /api/bookings/{id}/cancel/` — отмена брони
-- `POST /api/bookings/expire_old/` — автоотмена старых (кассир+)
-- `GET /api/tickets/` — мои билеты
-- `POST /api/tickets/check_by_barcode/` — проверка билета (контролёр+)
-- `POST /api/payments/` — создание платежа (кассир+)
+**Постеры**: демо-постеры лежат в `media/posters/` и закоммичены. Загрузки из админки пишутся в `media/` — на хостингах с эфемерным диском настройте внешнее хранилище (S3 и т.п.) или монтируйте volume.
 
-### Менеджер/Админ
-- `GET /api/dashboard/stats/` — метрики дашборда
-- `GET /api/dashboard/sales_report/` — отчёт по продажам
-- CRUD для: `/api/movies/`, `/api/genres/`, `/api/halls/`, `/api/seats/`, `/api/sessions/`
+## Документация
 
-## 🎨 Дизайн-система
+- [AUDIT.md](AUDIT.md) — аудит кода (этап 0)
+- [docs/ER.md](docs/ER.md) — ER-диаграмма
+- [docs/ROLES.md](docs/ROLES.md) — матрица ролей
+- [docs/API.md](docs/API.md) — API-эндпоинты
+- Swagger: `/api/docs/` (после запуска)
 
-CSS-переменные (в `static/css/main.css`):
+## Лицензия
 
-```css
-:root {
-  --bg: #14151a;          /* фон страницы */
-  --surface: #1f212b;      /* карточки */
-  --surface-2: #262935;    /* карточки hover */
-  --border: #31353f;
-  --text: #f4f3f0;
-  --text-muted: #9195a3;
-  --red: #e5304c;          /* основной акцент */
-  --red-dim: #b8253c;      /* hover для красного */
-  --gold: #eeb84a;         /* вторичный акцент */
-}
-```
-
-Шрифты:
-- **Bebas Neue** — заголовки, логотип, названия фильмов
-- **Inter** — основной текст, UI
-
-Компоненты:
-- `.session-pill` — пилюля-кнопка (border-radius: 999px)
-- `.film-card` — карточка фильма (border-radius: 14px)
-- `.seat` — место в схеме зала
-- `.badge-status-*` — цветные бейджи статусов
-
-## 📊 Админка
-
-Доступна по `/admin/`. Все модели зарегистрированы с удобными фильтрами, поиском и действиями:
-- Автогенерация мест для залов
-- Массовое изменение статусов
-- Фильтры по датам, ролям, статусам
-
-## 🔒 Безопасность
-
-- CSRF защита на всех формах
-- Разграничение доступа по ролям (DRF permissions + template tags)
-- Уникальные ограничения на уровне БД (место + сеанс)
-- Валидация пересечения сеансов в зале
-- Автоотмена броней по таймауту (15 мин)
-- Хеширование паролей (PBKDF2)
-
-## 🧪 Тестирование
-
-```bash
-# Запуск всех тестов
-python manage.py test
-
-# Конкретное приложение
-python manage.py test cinema
-```
-
-## 📦 Деплой (Production)
-
-1. Настройте PostgreSQL
-2. Установите `USE_SQLITE=False` в `.env`
-3. Сгенерируйте `DJANGO_SECRET_KEY`
-4. Настройте `ALLOWED_HOSTS`
-5. Соберите статику: `python manage.py collectstatic`
-6. Настройте Gunicorn + Nginx
-7. Настройте SSL (Let's Encrypt)
-8. Добавьте cron для `expire_bookings`
-
-## 📄 Лицензия
-
-MIT License — свободное использование, модификация и распространение.
-
----
-
-**АИС «Аврора»** — современное решение для автоматизации кинотеатра 🎬
+MIT License — см. [LICENSE](LICENSE).

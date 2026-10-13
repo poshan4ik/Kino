@@ -7,12 +7,12 @@ register = template.Library()
 @register.simple_tag
 def admin_stats():
     """Сводка для главной страницы админки (сегодня)."""
-    from datetime import date
+    from django.utils import timezone
     from decimal import Decimal
 
     from cinema.models import Booking, Movie, Payment, Session, Ticket, User
 
-    today = date.today()
+    today = timezone.localdate()
     revenue = (
         Payment.objects.filter(created_at__date=today, status='completed')
         .aggregate(s=Sum('amount'))['s'] or Decimal('0')

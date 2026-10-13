@@ -7,10 +7,25 @@
     <div>
         <p class="eyebrow">Аналитика</p>
         <h1 class="staff-title">ОТЧЁТЫ</h1>
-        <p class="staff-sub">период: {{ date_from|date:"d.m.Y" }} — {{ today|date:"d.m.Y" }} (31 день)</p>
+        <p class="staff-sub">период: {{ date_from|date:"d.m.Y" }} — {{ date_to|date:"d.m.Y" }}</p>
     </div>
-    <a href="{% url 'staff_sales' %}" class="btn btn-outline btn-sm">Журнал продаж</a>
+    <div class="flex items-center gap-2 flex-wrap">
+        <a href="{% url 'staff_sales' %}" class="btn btn-outline btn-sm">Журнал продаж</a>
+        <a href="{% url 'staff_reports_export' %}?date_from={{ date_from|date:'Y-m-d' }}&date_to={{ date_to|date:'Y-m-d' }}"
+           class="btn btn-primary btn-sm">Экспорт CSV</a>
+    </div>
 </div>
+
+<section class="panel p-4" style="margin-bottom:1.5rem;">
+    <form method="get" action="{% url 'staff_reports' %}" class="flex items-end gap-3 flex-wrap">
+        <label class="field"><span class="field-label">С</span>
+            <input type="date" class="form-control" name="date_from" value="{{ date_from|date:'Y-m-d' }}"></label>
+        <label class="field"><span class="field-label">По</span>
+            <input type="date" class="form-control" name="date_to" value="{{ date_to|date:'Y-m-d' }}"></label>
+        <button type="submit" class="btn btn-primary btn-sm">Применить</button>
+        <a href="{% url 'staff_reports' %}" class="btn btn-outline btn-sm">Сбросить</a>
+    </form>
+</section>
 
 <div class="grid-4" style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem;">
     <div class="kpi-card">

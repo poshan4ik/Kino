@@ -19,6 +19,7 @@ class User(AbstractUser):
     class Meta:
         verbose_name = 'Пользователь'
         verbose_name_plural = 'Пользователи'
+        ordering = ['username']
     
     def __str__(self):
         return f'{self.username} ({self.get_role_display()})'
@@ -205,21 +206,24 @@ class Session(models.Model):
     
     def clean(self):
         from django.core.exceptions import ValidationError
+        from django.conf import settings
         if self.date and self.time:
             from datetime import datetime, timedelta
+            buffer = getattr(settings, 'SESSION_BUFFER_MINUTES', 20)
             session_start = datetime.combine(self.date, self.time)
-            session_end = session_start + timedelta(minutes=self.movie.duration + 20)
-            
+            session_end = session_start + timedelta(minutes=self.movie.duration + buffer)
+
             overlapping = Session.objects.filter(
                 hall=self.hall,
                 date=self.date,
                 is_active=True
             ).exclude(pk=self.pk)
-            
+
             for other in overlapping:
                 other_start = datetime.combine(other.date, other.time)
-                other_end = other_start + timedelta(minutes=other.movie.duration + 20)
-                
+                other_end = other_start + timedelta(minutes=other.movie.duration + buffer)
+
+                # Конец одного сеанса может совпадать с началом следующего
                 if session_start < other_end and session_end > other_start:
                     raise ValidationError('Сеансы в этом зале пересекаются по времени')
     

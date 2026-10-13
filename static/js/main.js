@@ -257,7 +257,7 @@
     container.appendChild(legend);
   }
 
-  var MAX_SEATS = 6;
+    var MAX_SEATS = 10;
 
   /* ── Booking drawer flow ─────────────────────────────── */
   var booking = {
