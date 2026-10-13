@@ -268,7 +268,7 @@ class BookingCreateSerializer(serializers.ModelSerializer):
         session = validated_data['session']
         seat = validated_data['seat']
         try:
-            bookings, _ = services.create_hold(user, session, [seat.id])
+            bookings, _ = services.create_booking(user, session, [seat.id])
         except services.BookingError as exc:
             raise serializers.ValidationError(exc.message)
         return bookings[0]

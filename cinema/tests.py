@@ -327,10 +327,10 @@ class SecurityRegressionTests(CinemaFixture):
     def test_client_cannot_see_foreign_tickets(self):
         booking = Booking.objects.create(
             client=self.cashier, session=self.session, seat=self.seat1,
-            status='paid',
+            status='pending_payment',
         )
-        from .views import issue_ticket
-        issue_ticket(booking, 'cash', self.cashier)
+        from . import services
+        services.confirm_payment(booking, 'cash', self.cashier)
         api = APIClient()
         api.force_authenticate(user=self.client_user)
         resp = api.get('/api/tickets/')
@@ -515,9 +515,9 @@ class TicketCheckTests(CinemaFixture):
 
     def setUp(self):
         super().setUp()
-        self.booking = self.make_booking(status='paid')
-        from .views import issue_ticket
-        self.ticket = issue_ticket(self.booking, 'cash', self.cashier)
+        self.booking = self.make_booking(status='pending_payment')
+        from . import services
+        self.ticket = services.confirm_payment(self.booking, 'cash', self.cashier)
         self.api = APIClient()
         self.api.force_authenticate(user=self.controller)
 
@@ -558,9 +558,9 @@ class DashboardReportTests(CinemaFixture):
 
     def setUp(self):
         super().setUp()
-        self.booking = self.make_booking(status='paid')
-        from .views import issue_ticket
-        self.ticket = issue_ticket(self.booking, 'cash', self.cashier)
+        self.booking = self.make_booking(status='pending_payment')
+        from . import services
+        self.ticket = services.confirm_payment(self.booking, 'cash', self.cashier)
 
     def test_dashboard_forbidden_for_client(self):
         api = APIClient()

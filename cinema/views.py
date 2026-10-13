@@ -13,7 +13,6 @@ from django.db import transaction, connection
 from django.db.utils import IntegrityError
 from django.utils import timezone
 from datetime import timedelta, date
-import uuid
 
 from .models import User, Genre, Movie, Hall, Seat, Session, Booking, Ticket, Payment, AuditLog, Favorite, Review, log_audit
 from . import services
@@ -221,30 +220,6 @@ class SessionViewSet(viewsets.ModelViewSet):
         return Response(layout)
 
 
-def issue_ticket(booking, method, actor):
-    """Создаёт Ticket + Completed Payment и пишет аудит.
-
-    Статус Booking → paid и Ticket → active ставит сигнал payment_post_save.
-    """
-    ticket = Ticket.objects.create(
-        booking=booking,
-        price=booking.session.get_price_for_category(booking.seat.category),
-        barcode=str(uuid.uuid4()).replace('-', '').upper()[:20],
-        status='active',
-    )
-    Payment.objects.create(
-        ticket=ticket,
-        amount=ticket.price,
-        method=method,
-        status='completed',
-        completed_at=timezone.now(),
-    )
-    log_audit(actor, 'confirm_payment',
-              f'Оплата брони #{booking.id} ({booking.session.movie.title}), '
-              f'билет {ticket.barcode}, {ticket.price} руб.')
-    return ticket
-
-
 class BookingViewSet(viewsets.ModelViewSet):
     queryset = Booking.objects.select_related('client', 'session', 'session__movie', 'session__hall', 'seat', 'ticket').all()
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
@@ -277,11 +252,12 @@ class BookingViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], permission_classes=[IsCashierRole])
     def confirm_payment(self, request, pk=None):
         booking = self.get_object()
-        if booking.status != 'pending_payment':
-            return Response({'error': 'Бронирование не ожидает оплаты'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        ticket = issue_ticket(booking, request.data.get('method', 'cash'), request.user)
-
+        try:
+            ticket = services.confirm_payment(
+                booking, request.data.get('method', 'cash'), request.user
+            )
+        except services.BookingError as exc:
+            return Response({'error': exc.message}, status=exc.status)
         return Response(TicketSerializer(ticket, context={'request': request}).data)
 
     @extend_schema(request=HoldRequestSerializer, responses=OpenApiTypes.OBJECT)
@@ -307,7 +283,7 @@ class BookingViewSet(viewsets.ModelViewSet):
                                 status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            bookings, expires_at = services.create_hold(
+            bookings, expires_at = services.create_booking(
                 request.user, session_obj, seat_ids
             )
         except services.BookingError as exc:
@@ -364,28 +340,18 @@ class BookingViewSet(viewsets.ModelViewSet):
                 return Response({'error': 'Бронирование не найдено'},
                                 status=status.HTTP_404_NOT_FOUND)
 
-            now = timezone.now()
             for booking in bookings:
                 if booking.client_id != user.id and not is_staff:
                     return Response({'error': 'Нет доступа к бронированию'},
                                     status=status.HTTP_403_FORBIDDEN)
-                if booking.status != 'pending_payment':
-                    return Response(
-                        {'error': f'Бронирование #{booking.id} не ожидает оплаты'},
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
-                if booking.expires_at and booking.expires_at < now:
-                    return Response(
-                        {'error': 'Время удержания мест истекло — обновите выбор'},
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
-                if services.session_start_at(booking.session) <= now:
-                    return Response(
-                        {'error': f'Сеанс брони #{booking.id} уже начался'},
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
 
-            tickets = [issue_ticket(booking, method, user) for booking in bookings]
+            try:
+                tickets = [
+                    services.confirm_payment(booking, method, user)
+                    for booking in bookings
+                ]
+            except services.BookingError as exc:
+                return Response({'error': exc.message}, status=exc.status)
 
         return Response(
             TicketSerializer(tickets, many=True, context={'request': request}).data,
@@ -406,7 +372,7 @@ class BookingViewSet(viewsets.ModelViewSet):
         """Возврат: билет → refunded, платежи → refunded, бронь → cancelled."""
         booking = self.get_object()
         try:
-            booking = services.refund_booking(booking, request.user)
+            booking = services.refund_ticket(booking, request.user)
         except services.BookingError as exc:
             return Response({'error': exc.message}, status=status.HTTP_400_BAD_REQUEST)
         return Response(BookingSerializer(booking, context={'request': request}).data)
@@ -426,13 +392,7 @@ class BookingViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['post'], permission_classes=[IsCashierRole])
     def expire_old(self, request):
-        expired_bookings = Booking.objects.filter(
-            status__in=['created', 'pending_payment'],
-            expires_at__lt=timezone.now()
-        )
-        count = expired_bookings.count()
-        expired_bookings.update(status='expired')
-        return Response({'expired_count': count})
+        return Response({'expired_count': services.expire_old_bookings()})
 
 
 class TicketViewSet(viewsets.ModelViewSet):
@@ -460,25 +420,17 @@ class TicketViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], permission_classes=[IsControllerOrAbove])
     def validate_ticket(self, request, barcode=None):
         ticket = self.get_object()
-        
-        if ticket.status == 'used':
+        try:
+            ticket, message = services.check_ticket(ticket)
+        except services.BookingError as exc:
             return Response({
                 'valid': False,
-                'message': 'Билет уже использован',
+                'message': exc.message,
                 'ticket': TicketSerializer(ticket, context={'request': request}).data
             }, status=status.HTTP_400_BAD_REQUEST)
-        
-        if ticket.status in ['refunded', 'cancelled']:
-            return Response({
-                'valid': False,
-                'message': 'Билет аннулирован или возвращён',
-                'ticket': TicketSerializer(ticket, context={'request': request}).data
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        ticket.mark_used()
         return Response({
             'valid': True,
-            'message': 'Билет действителен, вход разрешён',
+            'message': message,
             'ticket': TicketSerializer(ticket, context={'request': request}).data
         })
     
@@ -499,24 +451,17 @@ class TicketViewSet(viewsets.ModelViewSet):
                 'message': 'Билет не найден'
             }, status=status.HTTP_404_NOT_FOUND)
         
-        if ticket.status == 'used':
+        try:
+            ticket, message = services.check_ticket(ticket)
+        except services.BookingError as exc:
             return Response({
                 'valid': False,
-                'message': 'Билет уже использован',
+                'message': exc.message,
                 'ticket': TicketSerializer(ticket, context={'request': request}).data
             }, status=status.HTTP_400_BAD_REQUEST)
-        
-        if ticket.status in ['refunded', 'cancelled']:
-            return Response({
-                'valid': False,
-                'message': 'Билет аннулирован или возвращён',
-                'ticket': TicketSerializer(ticket, context={'request': request}).data
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        ticket.mark_used()
         return Response({
             'valid': True,
-            'message': 'Билет действителен, вход разрешён',
+            'message': message,
             'ticket': TicketSerializer(ticket, context={'request': request}).data
         })
 
@@ -956,7 +901,7 @@ class BookingView(LoginRequiredMixin, TemplateView):
         seat_ids = [int(s) for s in raw if s.isdigit()]
 
         try:
-            bookings, _ = services.create_hold(request.user, session, seat_ids)
+            bookings, _ = services.create_booking(request.user, session, seat_ids)
         except services.BookingError as exc:
             messages.error(request, exc.message)
             return redirect('booking', session_id=session.id)
@@ -1051,63 +996,32 @@ class ControllerView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
                     'booking', 'booking__client', 'booking__session', 'booking__session__movie',
                     'booking__session__hall', 'booking__seat'
                 ).get(barcode=barcode.upper())
-                
-                if ticket.status == 'used':
-                    context['ticket_result'] = {
-                        'valid': False,
-                        'already_used': True,
-                        'message': 'Билет уже использован',
-                        'ticket': {
-                            'barcode': ticket.barcode,
-                            'movie_title': ticket.booking.session.movie.title,
-                            'session_date': ticket.booking.session.date.strftime('%d.%m.%Y'),
-                            'session_time': ticket.booking.session.time.strftime('%H:%M'),
-                            'hall_number': ticket.booking.session.hall.number,
-                            'hall_type': ticket.booking.session.hall.get_type_display(),
-                            'seat_row': ticket.booking.seat.row,
-                            'seat_number': ticket.booking.seat.number,
-                            'seat_category': ticket.booking.seat.get_category_display(),
-                            'client_name': ticket.booking.client.get_full_name() or ticket.booking.client.username,
-                            'status': ticket.get_status_display(),
-                        }
+                try:
+                    ticket, message = services.check_ticket(ticket)
+                    valid, already_used, result_message = True, False, message
+                except services.BookingError as exc:
+                    valid = False
+                    already_used = ticket.status == 'used'
+                    result_message = exc.message
+
+                context['ticket_result'] = {
+                    'valid': valid,
+                    'already_used': already_used,
+                    'message': result_message,
+                    'ticket': {
+                        'barcode': ticket.barcode,
+                        'movie_title': ticket.booking.session.movie.title,
+                        'session_date': ticket.booking.session.date.strftime('%d.%m.%Y'),
+                        'session_time': ticket.booking.session.time.strftime('%H:%M'),
+                        'hall_number': ticket.booking.session.hall.number,
+                        'hall_type': ticket.booking.session.hall.get_type_display(),
+                        'seat_row': ticket.booking.seat.row,
+                        'seat_number': ticket.booking.seat.number,
+                        'seat_category': ticket.booking.seat.get_category_display(),
+                        'client_name': ticket.booking.client.get_full_name() or ticket.booking.client.username,
+                        'status': ticket.get_status_display(),
                     }
-                elif ticket.status in ['refunded', 'cancelled']:
-                    context['ticket_result'] = {
-                        'valid': False,
-                        'message': 'Билет аннулирован или возвращён',
-                        'ticket': {
-                            'barcode': ticket.barcode,
-                            'movie_title': ticket.booking.session.movie.title,
-                            'session_date': ticket.booking.session.date.strftime('%d.%m.%Y'),
-                            'session_time': ticket.booking.session.time.strftime('%H:%M'),
-                            'hall_number': ticket.booking.session.hall.number,
-                            'hall_type': ticket.booking.session.hall.get_type_display(),
-                            'seat_row': ticket.booking.seat.row,
-                            'seat_number': ticket.booking.seat.number,
-                            'seat_category': ticket.booking.seat.get_category_display(),
-                            'client_name': ticket.booking.client.get_full_name() or ticket.booking.client.username,
-                            'status': ticket.get_status_display(),
-                        }
-                    }
-                else:
-                    ticket.mark_used()
-                    context['ticket_result'] = {
-                        'valid': True,
-                        'message': 'Билет действителен, вход разрешён',
-                        'ticket': {
-                            'barcode': ticket.barcode,
-                            'movie_title': ticket.booking.session.movie.title,
-                            'session_date': ticket.booking.session.date.strftime('%d.%m.%Y'),
-                            'session_time': ticket.booking.session.time.strftime('%H:%M'),
-                            'hall_number': ticket.booking.session.hall.number,
-                            'hall_type': ticket.booking.session.hall.get_type_display(),
-                            'seat_row': ticket.booking.seat.row,
-                            'seat_number': ticket.booking.seat.number,
-                            'seat_category': ticket.booking.seat.get_category_display(),
-                            'client_name': ticket.booking.client.get_full_name() or ticket.booking.client.username,
-                            'status': ticket.get_status_display(),
-                        }
-                    }
+                }
             except Ticket.DoesNotExist:
                 context['ticket_result'] = {
                     'valid': False,
