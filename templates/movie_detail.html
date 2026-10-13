@@ -58,7 +58,7 @@
                         {% endfor %}
                     </div>
 
-                    <h1 style="font-family:'Bebas Neue',sans-serif;font-size:clamp(2.6rem,5vw,4rem);line-height:.92;color:var(--text);margin:0;text-shadow:0 8px 40px rgba(0,0,0,.6);">{{ movie.title }}</h1>
+                    <h1 style="font-size:clamp(2.6rem,5vw,4rem);line-height:.92;color:var(--text);margin:0;text-shadow:0 8px 40px rgba(0,0,0,.6);">{{ movie.title }}</h1>
 
                     <div class="hero-meta" style="margin-top:.9rem;">
                         {% if movie.average_rating %}
@@ -106,7 +106,7 @@
     <section id="sessions" style="margin-top:.5rem;">
         <div class="section-rule" style="margin-bottom:1rem;"></div>
         <p class="eyebrow">Расписание</p>
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:clamp(2rem,4vw,2.6rem);color:var(--text);margin:0 0 1.5rem;">СЕАНСЫ</h2>
+        <h2 style="font-size:clamp(2rem,4vw,2.6rem);color:var(--text);margin:0 0 1.5rem;">СЕАНСЫ</h2>
 
         {% if sessions_by_date %}
         <div class="tabs" style="margin-bottom:1.5rem;" id="dayTabs">
@@ -156,7 +156,7 @@
     <section id="reviews" style="margin-top:3.5rem;">
         <div class="section-rule" style="margin-bottom:1rem;"></div>
         <p class="eyebrow">Оценки зрителей</p>
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:clamp(2rem,4vw,2.6rem);color:var(--text);margin:0 0 1.5rem;">ОТЗЫВЫ</h2>
+        <h2 style="font-size:clamp(2rem,4vw,2.6rem);color:var(--text);margin:0 0 1.5rem;">ОТЗЫВЫ</h2>
 
         {% if user.is_authenticated %}
         <form class="panel p-5" id="reviewForm" style="max-width:42rem;margin-bottom:2rem;" data-movie="{{ movie.id }}">

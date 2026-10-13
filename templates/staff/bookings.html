@@ -47,7 +47,7 @@
                     <td>
                         <span class="badge badge-status-{{ b.status }}">{{ b.get_status_display }}</span>
                         {% if b.ticket %}
-                        <div class="text-xs text-muted" style="font-family:monospace;">{{ b.ticket.barcode }}</div>
+                        <div class="text-xs text-muted mono">{{ b.ticket.barcode }}</div>
                         {% endif %}
                     </td>
                     <td class="text-xs text-muted">{{ b.created_at|date:"d.m.y H:i" }}</td>
@@ -69,7 +69,7 @@
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="7"><div class="empty-state" style="border:none;"><h3>Броней нет</h3><p>По выбранному фильтру записей не найдено.</p></div></td></tr>
+                <tr><td colspan="7"><div class="empty-state" style="border:none;"><h3>Броней пока нет</h3><p>По выбранному фильтру записей не найдено.</p></div></td></tr>
                 {% endfor %}
             </tbody>
         </table>

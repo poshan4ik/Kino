@@ -13,7 +13,7 @@
     <p class="eyebrow">{{ session.movie.title }}</p>
     <div class="flex items-end justify-between gap-4 flex-wrap">
         <div>
-            <h1 style="font-family:'Bebas Neue',sans-serif;font-size:clamp(2.4rem,5vw,3.4rem);line-height:1;color:var(--text);margin:0;">ВЫБОР МЕСТ</h1>
+            <h1 style="font-size:clamp(2.4rem,5vw,3.4rem);line-height:1;color:var(--text);margin:0;">ВЫБОР МЕСТ</h1>
             <p class="text-sm text-muted" style="margin:.5rem 0 0;">
                 {{ session.date|date:"d.m.Y" }}, {{ session.time|time:"H:i" }} · Зал {{ session.hall.number }} · {{ session.hall.get_type_display }}
             </p>
@@ -59,7 +59,7 @@
         <!-- Order panel -->
         <aside class="panel p-5" style="width:min(360px,100%);position:sticky;top:calc(var(--header-h) + 1rem);">
             <p class="eyebrow">Ваш заказ</p>
-            <h2 style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--text);margin:0;">{{ session.movie.title }}</h2>
+            <h2 style="font-size:1.8rem;color:var(--text);margin:0;">{{ session.movie.title }}</h2>
 
             <div class="border-t border-b" style="padding:1rem 0;margin-top:1.2rem;font-size:.875rem;color:var(--muted);">
                 <p style="margin:0;">{{ session.date|date:"d.m.Y" }}, {{ session.time|time:"H:i" }}</p>

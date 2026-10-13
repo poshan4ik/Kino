@@ -80,12 +80,7 @@
                 {% for d in filter_dates %}
                 <button type="button" class="date-chip" data-date="{{ d.iso }}">{{ d.label }}</button>
             {% endfor %}
-            <div class="empty-state" id="filterEmpty" style="display:none;grid-column:1/-1;">
-                <h3>Ничего не найдено</h3>
-                <p>Измените запрос или сбросьте фильтры — возможно, сеансов в другой день ещё нет.</p>
-            </div>
         </div>
-
 
             <div class="search-grid">
                 <label class="input-icon">
@@ -141,7 +136,7 @@
             <div>
                 <div class="section-rule" style="margin-bottom:1rem;"></div>
                 <p class="eyebrow">Сейчас в кино</p>
-                <h2 class="sec-h" data-num="01" style="font-family:'Bebas Neue',sans-serif;font-size:clamp(2.4rem,5vw,3.4rem);line-height:1;color:var(--text);margin:0;">АФИША</h2>
+                <h2 class="sec-h" data-num="01" style="font-size:clamp(2.4rem,5vw,3.4rem);line-height:1;color:var(--text);margin:0;">АФИША</h2>
             </div>
             <div class="text-sm text-muted flex items-center gap-2">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
@@ -262,7 +257,7 @@
             {% endfor %}
         </div>
 
-        <div class="empty-state hidden" id="filterEmpty" style="margin-top:1rem;">
+        <div class="empty-state" id="filterEmpty" style="display:none;margin-top:1rem;">
             <h3>Ничего не найдено</h3>
             <p>Попробуйте изменить дату, жанр или запрос.</p>
         </div>
@@ -273,7 +268,7 @@
     <section class="page-shell" id="skoro" style="padding-bottom:4rem;">
         <div class="section-rule reveal" style="margin-bottom:1rem;"></div>
         <p class="eyebrow">Скоро на большом экране</p>
-        <h2 class="sec-h" data-num="02" style="font-family:'Bebas Neue',sans-serif;font-size:clamp(2.4rem,5vw,3.4rem);line-height:1;color:var(--text);margin:0 0 2rem;">СКОРО</h2>
+        <h2 class="sec-h" data-num="02" style="font-size:clamp(2.4rem,5vw,3.4rem);line-height:1;color:var(--text);margin:0 0 2rem;">СКОРО</h2>
 
         <div class="film-grid">
             {% for movie in upcoming %}
@@ -323,7 +318,7 @@
     <section class="page-shell" id="theater" style="padding-bottom:4rem;">
         <div class="section-rule reveal" style="margin-bottom:1rem;"></div>
         <p class="eyebrow">О нас</p>
-        <h2 class="sec-h" data-num="03" style="font-family:'Bebas Neue',sans-serif;font-size:clamp(2.4rem,5vw,3.4rem);line-height:1;color:var(--text);margin:0 0 2rem;">КИНОТЕАТР</h2>
+        <h2 class="sec-h" data-num="03" style="font-size:clamp(2.4rem,5vw,3.4rem);line-height:1;color:var(--text);margin:0 0 2rem;">КИНОТЕАТР</h2>
 
         <div class="grid-3">
             <div class="panel p-6 reveal">
@@ -351,7 +346,7 @@
             <div>
                 <div class="section-rule" style="margin-bottom:1rem;"></div>
                 <p class="eyebrow">Социальное доказательство</p>
-                <h2 class="sec-h" data-num="04" style="font-family:'Bebas Neue',sans-serif;font-size:clamp(2.4rem,5vw,3.4rem);line-height:1;color:var(--text);margin:0;">ОТЗЫВЫ</h2>
+                <h2 class="sec-h" data-num="04" style="font-size:clamp(2.4rem,5vw,3.4rem);line-height:1;color:var(--text);margin:0;">ОТЗЫВЫ</h2>
             </div>
             <span class="text-sm text-muted">Реальные впечатления наших зрителей</span>
         </div>

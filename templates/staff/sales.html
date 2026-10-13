@@ -47,7 +47,7 @@
                     </td>
                     <td class="text-xs">{{ p.ticket.booking.client.get_full_name|default:p.ticket.booking.client.username }}</td>
                     <td><span class="badge">{{ p.get_method_display }}</span></td>
-                    <td class="text-xs text-muted" style="font-family:monospace;">{{ p.transaction_id|default:"—" }}</td>
+                    <td class="text-xs text-muted mono">{{ p.transaction_id|default:"—" }}</td>
                     <td style="text-align:right;"><b>{{ p.amount|floatformat:0 }} ₽</b></td>
                 </tr>
                 {% empty %}

@@ -46,7 +46,7 @@
 <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:1rem;margin-bottom:1.5rem;" class="dash-grid">
     <section class="panel p-5">
         <div class="flex items-center justify-between gap-2" style="margin-bottom:1.25rem;">
-            <h2 style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:var(--text);margin:0;">ВЫРУЧКА ЗА 7 ДНЕЙ</h2>
+            <h2 style="font-size:1.5rem;color:var(--text);margin:0;">ВЫРУЧКА ЗА 7 ДНЕЙ</h2>
             <span class="text-xs text-muted">{{ chart.0.day }} — {{ chart.6.day }}</span>
         </div>
         <div class="bar-chart">
@@ -61,7 +61,7 @@
     </section>
 
     <section class="panel p-5">
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:var(--text);margin:0 0 1.25rem;">ТОП ФИЛЬМОВ (7 ДНЕЙ)</h2>
+        <h2 style="font-size:1.5rem;color:var(--text);margin:0 0 1.25rem;">ТОП ФИЛЬМОВ (7 ДНЕЙ)</h2>
         <div class="flex flex-col gap-3">
             {% for t in top_films %}
             <div>
@@ -82,7 +82,7 @@
 
 <section class="panel" style="overflow:hidden;">
     <div class="flex items-center justify-between gap-2" style="padding:1.25rem 1.25rem 0;">
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:var(--text);margin:0;">СЕАНСЫ ДНЯ</h2>
+        <h2 style="font-size:1.5rem;color:var(--text);margin:0;">СЕАНСЫ ДНЯ</h2>
         <a href="{% url 'staff_sessions' %}" class="btn btn-outline btn-sm">Управление сеансами</a>
     </div>
     <div class="table-wrap" style="border:none;">

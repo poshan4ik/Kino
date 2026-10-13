@@ -33,7 +33,7 @@
                 {% for t in tickets %}
                 <tr>
                     <td>
-                        <b style="font-family:monospace;font-size:.78rem;">{{ t.barcode }}</b>
+                        <b class="mono" style="font-size:.78rem;">{{ t.barcode }}</b>
                         <div class="text-xs text-muted">выдан {{ t.issued_at|date:"d.m.y H:i" }}</div>
                     </td>
                     <td>{{ t.booking.session.movie.title }}</td>

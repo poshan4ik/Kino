@@ -13,7 +13,7 @@
             </div>
         </div>
         <div>
-            <h1 style="font-family:'Bebas Neue',sans-serif;font-size:clamp(2.2rem,5vw,3rem);line-height:1;color:var(--text);margin:0;">{{ user.get_full_name|default:user.username }}</h1>
+            <h1 style="font-size:clamp(2.2rem,5vw,3rem);line-height:1;color:var(--text);margin:0;">{{ user.get_full_name|default:user.username }}</h1>
             <p class="text-sm text-muted" style="margin:.35rem 0 0;">
                 {{ user.email|default:"—" }}
                 {% if user.role != 'client' %}<span class="role-tag" style="margin-left:.5rem;">{{ user.get_role_display }}</span>{% endif %}
@@ -34,7 +34,7 @@
         <section>
             <!-- Active tickets -->
             <div class="pTab" id="tab-t">
-                <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--text);margin:0 0 1.25rem;">АКТИВНЫЕ БИЛЕТЫ</h2>
+                <h2 style="font-size:2rem;color:var(--text);margin:0 0 1.25rem;">АКТИВНЫЕ БИЛЕТЫ</h2>
 
                 <div class="flex flex-col gap-3" style="margin-bottom:1.5rem;">
                     {% for b in bookings %}
@@ -43,7 +43,7 @@
                             <div class="flex items-center justify-between gap-3 flex-wrap">
                                 <div>
                                     <span class="badge badge-gold">Ожидает оплаты</span>
-                                    <h3 style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;color:var(--text);margin:.7rem 0 0;">{{ b.session.movie.title }}</h3>
+                                    <h3 style="font-size:1.6rem;color:var(--text);margin:.7rem 0 0;">{{ b.session.movie.title }}</h3>
                                     <p class="text-sm text-muted" style="margin:.25rem 0 0;">
                                         {{ b.session.date|date:"d.m.Y" }}, {{ b.session.time|time:"H:i" }} · Зал {{ b.session.hall.number }} · Ряд {{ b.seat.row }}, место {{ b.seat.number }}
                                     </p>
@@ -74,7 +74,7 @@
                                     <span class="badge badge-green">Активен</span>
                                     <span class="badge badge-status-{{ b.status }}">{{ b.get_status_display }}</span>
                                 </div>
-                                <h3 style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--text);margin:.9rem 0 0;">{{ b.session.movie.title }}</h3>
+                                <h3 style="font-size:1.8rem;color:var(--text);margin:.9rem 0 0;">{{ b.session.movie.title }}</h3>
                                 <p class="text-sm text-muted" style="margin:.3rem 0 0;">
                                     {{ b.session.date|date:"d.m.Y" }}, {{ b.session.time|time:"H:i" }} · Зал {{ b.session.hall.number }} · {{ b.session.hall.get_type_display }}
                                 </p>
@@ -100,14 +100,14 @@
 
             <!-- History -->
             <div class="pTab" id="tab-h" style="display:none;">
-                <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--text);margin:0 0 1.25rem;">ИСТОРИЯ ПОСЕЩЕНИЙ</h2>
+                <h2 style="font-size:2rem;color:var(--text);margin:0 0 1.25rem;">ИСТОРИЯ ПОСЕЩЕНИЙ</h2>
                 <div class="flex flex-col gap-3">
                     {% for b in bookings %}
                         {% if b.status in 'used,cancelled,expired' %}
                         <article class="ticket-stub past">
                             <div class="ticket-info">
                                 <span class="badge badge-status-{{ b.status }}">{{ b.get_status_display }}</span>
-                                <h3 style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;color:var(--text);margin:.8rem 0 0;">{{ b.session.movie.title }}</h3>
+                                <h3 style="font-size:1.6rem;color:var(--text);margin:.8rem 0 0;">{{ b.session.movie.title }}</h3>
                                 <p class="text-sm text-muted" style="margin:.3rem 0 0;">
                                     {{ b.session.date|date:"d.m.Y" }}, {{ b.session.time|time:"H:i" }} · Зал {{ b.session.hall.number }}
                                 </p>
@@ -127,7 +127,7 @@
 
             <!-- Favorites -->
             <div class="pTab" id="tab-f" style="display:none;">
-                <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--text);margin:0 0 1.25rem;">ИЗБРАННОЕ</h2>
+                <h2 style="font-size:2rem;color:var(--text);margin:0 0 1.25rem;">ИЗБРАННОЕ</h2>
                 <div class="flex flex-col gap-3">
                     {% for f in favorites %}
                     <article class="panel p-4 flex items-center gap-4 flex-wrap">
@@ -139,7 +139,7 @@
                             {% endif %}
                         </div>
                         <div style="flex:1;min-width:160px;">
-                            <h3 style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:var(--text);margin:0;">
+                            <h3 style="font-size:1.4rem;color:var(--text);margin:0;">
                                 <a href="{% url 'film' f.movie.id %}" style="color:inherit;">{{ f.movie.title }}</a>
                             </h3>
                             <p class="text-xs text-muted" style="margin:.25rem 0 0;">
@@ -157,7 +157,7 @@
 
             <!-- Payments -->
             <div class="pTab" id="tab-p" style="display:none;">
-                <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--text);margin:0 0 1.25rem;">ПЛАТЕЖИ</h2>
+                <h2 style="font-size:2rem;color:var(--text);margin:0 0 1.25rem;">ПЛАТЕЖИ</h2>
                 <div class="table-wrap">
                     <table class="table">
                         <thead><tr><th>Дата</th><th>Заказ</th><th>Способ</th><th style="text-align:right;">Сумма</th></tr></thead>
@@ -179,7 +179,7 @@
 
             <!-- Settings -->
             <div class="pTab" id="tab-s" style="display:none;">
-                <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--text);margin:0 0 1.25rem;">НАСТРОЙКИ</h2>
+                <h2 style="font-size:2rem;color:var(--text);margin:0 0 1.25rem;">НАСТРОЙКИ</h2>
                 <form class="panel p-5" id="profileForm" style="display:grid;gap:1rem;max-width:34rem;grid-template-columns:1fr 1fr;">
                     <label class="field"><span class="field-label">Имя</span>
                         <input type="text" class="form-control" name="first_name" value="{{ user.first_name }}"></label>
@@ -197,7 +197,7 @@
                     </div>
                 </form>
 
-                <h3 style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:var(--text);margin:2rem 0 .75rem;">СМЕНА ПАРОЛЯ</h3>
+                <h3 style="font-size:1.5rem;color:var(--text);margin:2rem 0 .75rem;">СМЕНА ПАРОЛЯ</h3>
                 <form method="post" action="{% url 'profile_password' %}" class="panel p-5" style="display:grid;gap:1rem;max-width:34rem;">
                     {% csrf_token %}
                     <label class="field"><span class="field-label">Текущий пароль</span>

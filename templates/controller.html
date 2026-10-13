@@ -37,7 +37,7 @@
         <div class="success-ring">
             <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2.2rem;line-height:1;margin:0;color:var(--success);">ВХОД РАЗРЕШЁН</h2>
+        <h2 style="font-size:2.2rem;line-height:1;margin:0;color:var(--success);">ВХОД РАЗРЕШЁН</h2>
         <p class="text-sm" style="color:var(--muted);margin:.6rem 0 0;">{{ ticket_result.message }}</p>
         {% if ticket_result.ticket %}
         <div class="flex items-center justify-center gap-3 flex-wrap" style="margin-top:1.25rem;">
@@ -53,7 +53,7 @@
         <div class="success-ring" style="background:var(--destructive-10);border-color:var(--destructive-40);color:var(--accent-hover);">
             <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </div>
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:2.2rem;line-height:1;margin:0;color:var(--accent-hover);">
+        <h2 style="font-size:2.2rem;line-height:1;margin:0;color:var(--accent-hover);">
             {% if ticket_result.already_used %}БИЛЕТ УЖЕ ИСПОЛЬЗОВАН{% else %}ВХОД ЗАПРЕЩЁН{% endif %}
         </h2>
         <p class="text-sm" style="color:var(--muted);margin:.6rem 0 0;">{{ ticket_result.message }}</p>
@@ -100,7 +100,7 @@
 {% if check_history %}
 <section class="panel mt-6" style="overflow:hidden;">
     <div class="flex items-center justify-between gap-2" style="padding:1.1rem 1.25rem 0;">
-        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:var(--text);margin:0;">ИСТОРИЯ ПРОВЕРОК</h2>
+        <h2 style="font-size:1.4rem;color:var(--text);margin:0;">ИСТОРИЯ ПРОВЕРОК</h2>
         <span class="text-xs text-muted">последние {{ check_history|length }}</span>
     </div>
     <div class="table-wrap" style="border:none;">
@@ -110,7 +110,7 @@
                 {% for h in check_history %}
                 <tr>
                     <td class="text-xs">{{ h.time }}</td>
-                    <td class="text-xs" style="font-family:monospace;">{{ h.barcode }}</td>
+                    <td class="text-xs mono">{{ h.barcode }}</td>
                     <td>
                         {% if h.valid %}
                         <span class="badge badge-green">Пропущен</span>

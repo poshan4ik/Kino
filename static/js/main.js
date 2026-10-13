@@ -724,6 +724,11 @@
   }
 
   /* ── QR codes (qrcodejs, если подключён) ─────────────── */
+  function cssVar(name, fallback) {
+    var v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback;
+  }
+
   function renderQR(root) {
     if (typeof QRCode === 'undefined') return;
     (root || document).querySelectorAll('.ticket-qr[data-qr]:empty').forEach(function (node) {
@@ -731,7 +736,8 @@
         new QRCode(node, {
           text: node.getAttribute('data-qr'),
           width: 88, height: 88,
-          colorDark: '#0d0e12', colorLight: '#ffffff',
+          colorDark: cssVar('--bg', '#0d0e12'),
+          colorLight: cssVar('--white', '#ffffff'),
           correctLevel: QRCode.CorrectLevel.M,
         });
       } catch (e) { /* fallback: barcode виден рядом */ }
