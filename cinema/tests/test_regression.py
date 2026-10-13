@@ -4,63 +4,13 @@ from io import StringIO
 
 from django.core.management import call_command
 from django.db import IntegrityError, transaction
-from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
 from rest_framework.test import APIClient
 
-from .models import User, Genre, Movie, Hall, Seat, Session, Booking, Ticket, Payment, Favorite, Review
-
-
-def _context_copy(self):
-    duplicate = self.__class__.__new__(self.__class__)
-    duplicate.__dict__.update(self.__dict__)
-    duplicate.dicts = self.dicts[:]
-    return duplicate
-
-
-from django.template.context import BaseContext  # noqa: E402
-
-BaseContext.__copy__ = _context_copy
-
-
-class CinemaFixture(TestCase):
-    """Базовая фикстура: жанр, фильм, зал с местами, сеанс, пользователи"""
-
-    def setUp(self):
-        self.genre = Genre.objects.create(name='Фантастика')
-        self.movie = Movie.objects.create(
-            title='Тестовый фильм', genre=self.genre,
-            duration=100, age_rating=16, status='active',
-        )
-        self.hall = Hall.objects.create(number=1, type='2D', capacity=20)
-        self.seat1 = Seat.objects.create(hall=self.hall, row=1, number=1)
-        self.seat2 = Seat.objects.create(hall=self.hall, row=1, number=2)
-        self.session = Session.objects.create(
-            movie=self.movie, hall=self.hall,
-            date=date.today() + timedelta(days=1), time=time(12, 0),
-        )
-        self.client_user = User.objects.create_user(
-            username='client1', password='pass123457', role='client')
-        self.cashier = User.objects.create_user(
-            username='cashier1', password='pass123457', role='cashier')
-        self.manager = User.objects.create_user(
-            username='manager1', password='pass123457', role='manager')
-        self.controller = User.objects.create_user(
-            username='controller1', password='pass123457', role='controller')
-        self.admin = User.objects.create_user(
-            username='admin1', password='pass123457', role='admin',
-            is_staff=True, is_superuser=True)
-
-    def make_booking(self, user=None, seat=None, status='pending_payment', expires_at=None):
-        return Booking.objects.create(
-            client=user or self.client_user,
-            session=self.session,
-            seat=seat or self.seat1,
-            status=status,
-            expires_at=expires_at,
-        )
+from ..models import User, Genre, Movie, Hall, Seat, Session, Booking, Ticket, Payment, Favorite, Review
+from .base import CinemaFixture
 
 
 class BookingUniqueConstraintTests(CinemaFixture):
@@ -329,7 +279,7 @@ class SecurityRegressionTests(CinemaFixture):
             client=self.cashier, session=self.session, seat=self.seat1,
             status='pending_payment',
         )
-        from . import services
+        from .. import services
         services.confirm_payment(booking, 'cash', self.cashier)
         api = APIClient()
         api.force_authenticate(user=self.client_user)
@@ -395,8 +345,8 @@ class HoldFlowTests(CinemaFixture):
         )
 
     def test_concurrent_hold_second_fails(self):
-        from . import services
-        from .models import Seat as SeatModel
+        from .. import services
+        from ..models import Seat as SeatModel
         seats = []
         for i in range(3, 5):
             seats.append(SeatModel.objects.create(hall=self.hall, row=1, number=i))
@@ -516,7 +466,7 @@ class TicketCheckTests(CinemaFixture):
     def setUp(self):
         super().setUp()
         self.booking = self.make_booking(status='pending_payment')
-        from . import services
+        from .. import services
         self.ticket = services.confirm_payment(self.booking, 'cash', self.cashier)
         self.api = APIClient()
         self.api.force_authenticate(user=self.controller)
@@ -559,7 +509,7 @@ class DashboardReportTests(CinemaFixture):
     def setUp(self):
         super().setUp()
         self.booking = self.make_booking(status='pending_payment')
-        from . import services
+        from .. import services
         self.ticket = services.confirm_payment(self.booking, 'cash', self.cashier)
 
     def test_dashboard_forbidden_for_client(self):
@@ -673,7 +623,7 @@ class ExtraCoverageTests(CinemaFixture):
         return data
 
     def test_register_form_valid_creates_client(self):
-        from .forms import RegisterForm
+        from ..forms import RegisterForm
         form = RegisterForm(data=self._form_data())
         self.assertTrue(form.is_valid(), form.errors)
         user = form.save()
@@ -682,7 +632,7 @@ class ExtraCoverageTests(CinemaFixture):
         self.assertTrue(user.check_password('StrongPass123'))
 
     def test_register_form_duplicate_email(self):
-        from .forms import RegisterForm
+        from ..forms import RegisterForm
         User.objects.create_user(
             username='taken', password='x' * 9, email='new@example.com')
         form = RegisterForm(data=self._form_data())
@@ -690,26 +640,26 @@ class ExtraCoverageTests(CinemaFixture):
         self.assertIn('email', form.errors)
 
     def test_register_form_bad_phone(self):
-        from .forms import RegisterForm
+        from ..forms import RegisterForm
         form = RegisterForm(data=self._form_data(phone='12345'))
         self.assertFalse(form.is_valid())
         self.assertIn('phone', form.errors)
 
     def test_register_form_requires_terms(self):
-        from .forms import RegisterForm
+        from ..forms import RegisterForm
         form = RegisterForm(data=self._form_data(terms=False))
         self.assertFalse(form.is_valid())
         self.assertIn('terms', form.errors)
 
     def test_register_form_phone_cleanup(self):
-        from .forms import RegisterForm
+        from ..forms import RegisterForm
         form = RegisterForm(data=self._form_data(phone='+7 (700) 123-45-67'))
         self.assertTrue(form.is_valid(), form.errors)
         user = form.save()
         self.assertEqual(user.phone, '+77001234567')
 
     def test_admin_stats_tag(self):
-        from .templatetags.admin_stats import admin_stats
+        from ..templatetags.admin_stats import admin_stats
         self.make_booking(status='paid')
         stats = admin_stats()
         self.assertIn('movies', stats)
