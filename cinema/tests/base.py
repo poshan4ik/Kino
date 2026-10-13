@@ -47,11 +47,12 @@ class CinemaFixture(TestCase):
             username='admin1', password='pass123457', role='admin',
             is_staff=True, is_superuser=True)
 
-    def make_booking(self, user=None, seat=None, status='pending_payment', expires_at=None):
+    def make_booking(self, user=None, seat=None, status='pending_payment', expires_at=None, ticket_type=None):
         return Booking.objects.create(
             client=user or self.client_user,
             session=self.session,
             seat=seat or self.seat1,
             status=status,
             expires_at=expires_at,
+            ticket_type=ticket_type,
         )

@@ -158,7 +158,7 @@
         <p class="eyebrow">Оценки зрителей</p>
         <h2 style="font-size:clamp(2rem,4vw,2.6rem);color:var(--text);margin:0 0 1.5rem;">ОТЗЫВЫ</h2>
 
-        {% if user.is_authenticated %}
+        {% if user.is_authenticated and can_review %}
         <form class="panel p-5" id="reviewForm" style="max-width:42rem;margin-bottom:2rem;" data-movie="{{ movie.id }}">
             <p class="text-sm text-muted" style="margin:0 0 .75rem;">
                 Ваша оценка{% if user_review %} (вы уже оценили: {{ user_review.rating }}/5 — изменить){% endif %}
@@ -177,6 +177,12 @@
                 <span id="reviewMsg" class="text-xs text-muted"></span>
             </div>
         </form>
+        {% elif user.is_authenticated %}
+        <div class="panel p-5" style="max-width:42rem;margin-bottom:2rem;">
+            <p class="text-sm text-muted" style="margin:0;">
+                Оценить фильм можно после посещения сеанса — с оплаченным и использованным билетом на этот фильм.
+            </p>
+        </div>
         {% else %}
         <div class="panel p-5" style="max-width:42rem;margin-bottom:2rem;">
             <p class="text-sm text-muted" style="margin:0;">

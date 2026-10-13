@@ -2,7 +2,7 @@ from django.db.models import Avg
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
-from .models import User, Genre, Movie, Hall, Seat, Session, Booking, Ticket, Payment, Favorite, Review
+from .models import User, Genre, Movie, Hall, Seat, Session, Booking, Ticket, Payment, Favorite, Review, TicketType
 import uuid
 
 
@@ -217,11 +217,14 @@ class BookingSerializer(serializers.ModelSerializer):
     client_username = serializers.CharField(source='client.username', read_only=True)
     session_info = SessionListSerializer(source='session', read_only=True)
     seat_info = SeatSerializer(source='seat', read_only=True)
+    ticket_type_name = serializers.CharField(
+        source='ticket_type.name', read_only=True, default=None
+    )
     ticket = serializers.SerializerMethodField()
     
     class Meta:
         model = Booking
-        fields = ['id', 'client', 'client_name', 'client_username', 'session', 'session_info', 'seat', 'seat_info', 'status', 'created_at', 'expires_at', 'ticket']
+        fields = ['id', 'client', 'client_name', 'client_username', 'session', 'session_info', 'seat', 'seat_info', 'ticket_type', 'ticket_type_name', 'status', 'created_at', 'expires_at', 'ticket']
         read_only_fields = ['id', 'client', 'session', 'seat', 'status', 'created_at', 'expires_at']
     
     @extend_schema_field({'type': 'object', 'nullable': True})
@@ -371,6 +374,10 @@ class HoldRequestSerializer(serializers.Serializer):
         child=serializers.IntegerField(), min_length=1, max_length=10,
         help_text='ID мест (не больше BOOKING_MAX_SEATS)',
     )
+    ticket_type = serializers.IntegerField(
+        required=False, allow_null=True,
+        help_text='ID типа билета (скидка); без него — взрослый',
+    )
 
 
 class PayRequestSerializer(serializers.Serializer):
@@ -387,6 +394,28 @@ class ReviewCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
         fields = ['movie', 'rating', 'comment']
+
+    def validate(self, attrs):
+        # Оставить оценку может только клиент с оплаченным и
+        # использованным билетом на этот фильм
+        from .models import BookingStatus, TicketStatus
+        user = self.context['request'].user
+        movie = attrs['movie']
+        can_review = Ticket.objects.filter(
+            booking__client=user,
+            booking__session__movie=movie,
+            status=TicketStatus.USED,
+        ).exists() or Booking.objects.filter(
+            client=user,
+            session__movie=movie,
+            status=BookingStatus.USED,
+        ).exists()
+        if not can_review:
+            raise serializers.ValidationError(
+                'Оценку можно оставить после посещения сеанса '
+                '(оплаченный и использованный билет на этот фильм)'
+            )
+        return attrs
 
     def create(self, validated_data):
         # Одна оценка на пользователя: повторный отзыв обновляет существующий

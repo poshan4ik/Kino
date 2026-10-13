@@ -362,6 +362,46 @@ class Session(models.Model):
         return self.hall.seats.exclude(id__in=booked_seat_ids)
 
 
+class TicketType(models.Model):
+    """Тип билета со скидкой в процентах (взрослый/детский/студенческий).
+
+    Скидка применяется к базовой цене категории места на сервере
+    (см. services.calculate_ticket_price).
+    """
+
+    code = models.CharField(max_length=20, unique=True, verbose_name='Код')
+    name = models.CharField(max_length=100, verbose_name='Название')
+    discount_percent = models.PositiveSmallIntegerField(
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name='Скидка (%)',
+    )
+    is_active = models.BooleanField(default=True, verbose_name='Активен')
+
+    class Meta:
+        verbose_name = 'Тип билета'
+        verbose_name_plural = 'Типы билетов'
+        ordering = ['discount_percent']
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(discount_percent__gte=0)
+                & models.Q(discount_percent__lte=100),
+                name='ticket_type_discount_range',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.name} (−{self.discount_percent}%)'
+
+    @classmethod
+    def get_default(cls):
+        """Взрослый тип по умолчанию (создаёт при первом обращении)."""
+        return cls.objects.get_or_create(
+            code='adult',
+            defaults={'name': 'Взрослый', 'discount_percent': 0, 'is_active': True},
+        )[0]
+
+
 class Booking(StatusTransitionMixin, models.Model):
     STATUS_CHOICES = BookingStatus.choices
     status_kind = 'booking'
@@ -369,6 +409,10 @@ class Booking(StatusTransitionMixin, models.Model):
     client = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bookings', verbose_name='Клиент')
     session = models.ForeignKey(Session, on_delete=models.CASCADE, related_name='bookings', verbose_name='Сеанс')
     seat = models.ForeignKey(Seat, on_delete=models.CASCADE, related_name='bookings', verbose_name='Место')
+    ticket_type = models.ForeignKey(
+        TicketType, on_delete=models.PROTECT, null=True, blank=True,
+        related_name='bookings', verbose_name='Тип билета',
+    )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=BookingStatus.CREATED, verbose_name='Статус')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
     expires_at = models.DateTimeField(null=True, blank=True, verbose_name='Истекает')

@@ -14,7 +14,7 @@ from django.db.utils import IntegrityError
 from django.utils import timezone
 from datetime import timedelta, date
 
-from .models import User, Genre, Movie, Hall, Seat, Session, Booking, Ticket, Payment, AuditLog, Favorite, Review, log_audit
+from .models import User, Genre, Movie, Hall, Seat, Session, Booking, Ticket, Payment, AuditLog, Favorite, Review, TicketType, log_audit
 from . import services
 from .serializers import (
     UserSerializer, UserAdminSerializer, UserCreateSerializer, GenreSerializer, MovieSerializer,
@@ -283,9 +283,18 @@ class BookingViewSet(viewsets.ModelViewSet):
                 return Response({'error': 'Некорректный выбор мест'},
                                 status=status.HTTP_400_BAD_REQUEST)
 
+        ticket_type = None
+        raw_type = request.data.get('ticket_type')
+        if raw_type is not None:
+            try:
+                ticket_type = TicketType.objects.get(pk=int(raw_type), is_active=True)
+            except (TicketType.DoesNotExist, TypeError, ValueError):
+                return Response({'error': 'Тип билета не найден'},
+                                status=status.HTTP_400_BAD_REQUEST)
+
         try:
             bookings, expires_at = services.create_booking(
-                request.user, session_obj, seat_ids
+                request.user, session_obj, seat_ids, ticket_type=ticket_type
             )
         except services.BookingError as exc:
             return Response({'error': exc.message}, status=exc.status)
@@ -422,7 +431,7 @@ class TicketViewSet(viewsets.ModelViewSet):
     def validate_ticket(self, request, barcode=None):
         ticket = self.get_object()
         try:
-            ticket, message = services.check_ticket(ticket)
+            ticket, message = services.check_ticket(ticket, actor=request.user)
         except services.BookingError as exc:
             return Response({
                 'valid': False,
@@ -453,7 +462,7 @@ class TicketViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_404_NOT_FOUND)
         
         try:
-            ticket, message = services.check_ticket(ticket)
+            ticket, message = services.check_ticket(ticket, actor=request.user)
         except services.BookingError as exc:
             return Response({
                 'valid': False,
@@ -639,6 +648,7 @@ from django.views.generic import TemplateView, FormView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
+from django.conf import settings
 from django.db.models import Prefetch
 from .forms import RegisterForm
 
@@ -855,10 +865,140 @@ class MovieDetailView(TemplateView):
         if user.is_authenticated:
             context['is_favorite'] = user.favorites.filter(movie=movie).exists()
             context['user_review'] = Review.objects.filter(user=user, movie=movie).first()
+            from .models import BookingStatus, TicketStatus
+            context['can_review'] = (
+                context['user_review'] is not None
+                or Ticket.objects.filter(
+                    booking__client=user, booking__session__movie=movie,
+                    status=TicketStatus.USED,
+                ).exists()
+                or Booking.objects.filter(
+                    client=user, session__movie=movie,
+                    status=BookingStatus.USED,
+                ).exists()
+            )
         else:
             context['is_favorite'] = False
             context['user_review'] = None
+            context['can_review'] = False
         return context
+
+
+def _ticket_qr_data_uri(barcode):
+    """QR-код штрихкода билета как data URI (библиотека qrcode + Pillow)."""
+    import base64
+    import io
+
+    import qrcode
+
+    qr = qrcode.QRCode(version=None, box_size=10, border=2)
+    qr.add_data(barcode)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color='#0d0e12', back_color='white')
+    buf = io.BytesIO()
+    img.save(buf, format='PNG')
+    return 'data:image/png;base64,' + base64.b64encode(buf.getvalue()).decode('ascii')
+
+
+class TicketDetailView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    """Страница билета с QR-кодом: только владелец или персонал.
+
+    QR генерируется на сервере из штрихкода билета (qrcode + Pillow).
+    Печатная версия — @media print в шаблоне ticket.html.
+    """
+    template_name = 'ticket.html'
+    login_url = 'login'
+
+    def test_func(self):
+        ticket = get_object_or_404(
+            Ticket.objects.select_related(
+                'booking__client', 'booking__session__movie',
+                'booking__session__hall', 'booking__seat',
+            ),
+            pk=self.kwargs['pk'],
+        )
+        self.ticket = ticket
+        user = self.request.user
+        return (
+            ticket.booking.client_id == user.id
+            or user.role in ['cashier', 'controller', 'manager', 'admin']
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        ticket = get_object_or_404(
+            Ticket.objects.select_related(
+                'booking__client', 'booking__session__movie',
+                'booking__session__hall', 'booking__seat',
+                'booking__ticket_type',
+            ),
+            pk=kwargs['pk'],
+        )
+        context['ticket'] = ticket
+        context['booking'] = ticket.booking
+        context['session'] = ticket.booking.session
+        context['movie'] = ticket.booking.session.movie
+        context['qr_data_uri'] = _ticket_qr_data_uri(ticket.barcode)
+        return context
+
+
+class PaymentPageView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    """Страница оплаты брони с таймером удержания мест.
+
+    «Место удерживается MM:SS» — до expires_at; по истечении JS показывает
+    сообщение и возвращает на выбор мест. Оплата — через services.confirm_payment.
+    """
+    template_name = 'pay.html'
+    login_url = 'login'
+
+    def test_func(self):
+        booking = get_object_or_404(
+            Booking.objects.select_related('session__movie', 'session__hall'),
+            pk=self.kwargs['booking_id'],
+        )
+        self.booking_obj = booking
+        user = self.request.user
+        return (
+            booking.client_id == user.id
+            or user.role in ['cashier', 'manager', 'admin']
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        booking = get_object_or_404(
+            Booking.objects.select_related(
+                'session__movie', 'session__hall', 'seat', 'ticket_type',
+            ),
+            pk=kwargs['booking_id'],
+        )
+        context['booking'] = booking
+        context['session'] = booking.session
+        base_price = booking.session.get_price_for_category(booking.seat.category)
+        context['base_price'] = base_price
+        context['final_price'] = services.calculate_ticket_price(
+            base_price, booking.ticket_type
+        )
+        context['is_expired'] = booking.is_expired()
+        context['can_pay'] = (
+            booking.status == 'pending_payment' and not context['is_expired']
+        )
+        return context
+
+    def post(self, request, *args, **kwargs):
+        booking = get_object_or_404(
+            Booking.objects.select_related('session__movie', 'session__hall', 'seat'),
+            pk=kwargs['booking_id'],
+            client=request.user,
+        )
+        if booking.status != 'pending_payment':
+            messages.error(request, 'Это бронирование не ожидает оплаты')
+            return redirect('profile')
+        try:
+            ticket = services.confirm_payment(booking, 'online', request.user)
+        except services.BookingError as exc:
+            messages.error(request, exc.message)
+            return redirect('booking', session_id=booking.session_id)
+        return redirect('ticket_detail', pk=ticket.pk)
 
 
 class BookingView(LoginRequiredMixin, TemplateView):
@@ -894,6 +1034,7 @@ class BookingView(LoginRequiredMixin, TemplateView):
             })
         
         context['seats_by_row'] = dict(sorted(seats_by_row.items()))
+        context['ticket_types'] = TicketType.objects.filter(is_active=True)
         return context
     
     def post(self, request, *args, **kwargs):
@@ -901,17 +1042,27 @@ class BookingView(LoginRequiredMixin, TemplateView):
         raw = request.POST.get('seats', '').split(',')
         seat_ids = [int(s) for s in raw if s.isdigit()]
 
+        ticket_type = None
+        raw_type = request.POST.get('ticket_type', '')
+        if raw_type.isdigit():
+            ticket_type = TicketType.objects.filter(
+                pk=int(raw_type), is_active=True
+            ).first()
+
         try:
-            bookings, _ = services.create_booking(request.user, session, seat_ids)
+            bookings, _ = services.create_booking(
+                request.user, session, seat_ids, ticket_type=ticket_type
+            )
         except services.BookingError as exc:
             messages.error(request, exc.message)
             return redirect('booking', session_id=session.id)
 
         messages.success(
             request,
-            f'Забронировано {len(bookings)} мест. Ожидает оплаты.'
+            f'Забронировано {len(bookings)} мест. Осталось оплатить — '
+            f'{settings.BOOKING_HOLD_MINUTES} минут на решение.'
         )
-        return redirect('profile')
+        return redirect('pay_booking', booking_id=bookings[0].id)
 
 
 class ProfileView(LoginRequiredMixin, TemplateView):
@@ -998,7 +1149,7 @@ class ControllerView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
                     'booking__session__hall', 'booking__seat'
                 ).get(barcode=barcode.upper())
                 try:
-                    ticket, message = services.check_ticket(ticket)
+                    ticket, message = services.check_ticket(ticket, actor=self.request.user)
                     valid, already_used, result_message = True, False, message
                 except services.BookingError as exc:
                     valid = False
@@ -1059,6 +1210,7 @@ class ManagerView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        import json
         from django.utils import timezone
         from django.db.models import Sum, Count, Q
         from datetime import timedelta
@@ -1068,6 +1220,22 @@ class ManagerView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         context['staff_role'] = self.request.user.role
         
         today = timezone.localdate()
+
+        def parse_date(value, fallback):
+            try:
+                return date.fromisoformat(value)
+            except (TypeError, ValueError):
+                return fallback
+
+        date_to = parse_date(self.request.GET.get('date_to'), today)
+        date_from = parse_date(
+            self.request.GET.get('date_from'), date_to - timedelta(days=6)
+        )
+        if date_from > date_to:
+            date_from, date_to = date_to, date_from
+        context['date_from'] = date_from
+        context['date_to'] = date_to
+
         context['today'] = today
         context['now'] = timezone.now()
         context['movies'] = Movie.objects.select_related('genre').order_by('-created_at')[:20]
@@ -1117,42 +1285,73 @@ class ManagerView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         context['tickets_sold'] = tickets_sold
         context['occupancy'] = context['stats']['occupancy']
         
-        chart = []
-        chart_start = today - timedelta(days=6)
+        # Продажи по дням за выбранный период (для Chart.js)
+        payments = Payment.objects.filter(
+            status='completed',
+            completed_at__date__gte=date_from,
+            completed_at__date__lte=date_to,
+        )
         rev_by_day = {
             row['day']: row['total']
-            for row in Payment.objects.filter(
-                status='completed',
-                completed_at__date__gte=chart_start,
-                completed_at__date__lte=today,
-            ).annotate(day=TruncDate('completed_at')).values('day').annotate(
+            for row in payments.annotate(day=TruncDate('completed_at')).values('day').annotate(
                 total=Sum('amount')
             )
         }
-        for i in range(6, -1, -1):
-            d = today - timedelta(days=i)
+        chart = []
+        span_days = (date_to - date_from).days
+        for i in range(span_days + 1):
+            d = date_from + timedelta(days=i)
             chart.append({
                 'day': d.strftime('%d.%m'),
                 'revenue': int(float(rev_by_day.get(d, 0))),
             })
-        max_rev = max(c['revenue'] for c in chart) or 1
-        for c in chart:
-            c['percent'] = max(6, round(c['revenue'] / max_rev * 100))
         context['chart'] = chart
-        
+        context['chart_labels'] = json.dumps([c['day'] for c in chart])
+        context['chart_data'] = json.dumps([c['revenue'] for c in chart])
+
+        # Топ-5 фильмов за период
         top = Ticket.objects.filter(
             status__in=['active', 'used'],
-            issued_at__date__gte=today - timedelta(days=7)
+            issued_at__date__gte=date_from,
+            issued_at__date__lte=date_to,
         ).values(
             'booking__session__movie__title'
-        ).annotate(tickets=Count('id')).order_by('-tickets')[:5]
-        max_top = top[0]['tickets'] if top else 1
+        ).annotate(tickets=Count('id'), revenue=Sum('price')).order_by('-tickets')[:5]
         context['top_films'] = [
             {'title': t['booking__session__movie__title'], 'tickets': t['tickets'],
-             'percent': round(t['tickets'] / max_top * 100)}
+             'revenue': int(float(t['revenue'] or 0))}
             for t in top
         ]
-        context['top_movies'] = context['top_films']
+        context['top_labels'] = json.dumps([t['title'] for t in context['top_films']])
+        context['top_data'] = json.dumps([t['tickets'] for t in context['top_films']])
+
+        # Загрузка залов в % (средняя по сеансам периода)
+        hall_rows = Session.objects.filter(
+            date__gte=date_from, date__lte=date_to, is_active=True
+        ).values('hall_id', 'hall__number').annotate(
+            sold=Count('bookings', filter=Q(bookings__status__in=['paid', 'used'])),
+        )
+        hall_stats = {}
+        for row in hall_rows:
+            entry = hall_stats.setdefault(
+                row['hall_id'],
+                {'hall': row['hall__number'], 'sold': 0, 'capacity_sessions': 0},
+            )
+            entry['sold'] += row['sold']
+            entry['capacity_sessions'] += seats_by_hall.get(row['hall_id'], 0)
+        occupancy_rows = [
+            {
+                'hall': h['hall'],
+                'percent': round(h['sold'] / h['capacity_sessions'] * 100)
+                if h['capacity_sessions'] else 0,
+            }
+            for h in sorted(hall_stats.values(), key=lambda x: x['hall'])
+        ]
+        context['hall_occupancy'] = occupancy_rows
+        context['hall_labels'] = json.dumps(
+            [f"Зал {h['hall']}" for h in occupancy_rows]
+        )
+        context['hall_data'] = json.dumps([h['percent'] for h in occupancy_rows])
         
         return context
 

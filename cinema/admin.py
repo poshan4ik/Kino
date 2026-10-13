@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import (
     User, Genre, Movie, Hall, Seat, Session, Booking, Ticket, Payment,
-    AuditLog, log_audit, Favorite, Review,
+    AuditLog, log_audit, Favorite, Review, TicketType,
 )
 
 # ── Брендинг админ-панели «Аврора» ─────────────────────────
@@ -111,10 +111,20 @@ class SessionAdmin(admin.ModelAdmin):
                       f'Сеанс #{obj.id} ({obj.movie.title}): ' + '; '.join(changes))
 
 
+@admin.register(TicketType)
+class TicketTypeAdmin(admin.ModelAdmin):
+    """Типы билетов: скидки настраиваются здесь (взрослый/детский/студенческий)"""
+    list_display = ['code', 'name', 'discount_percent', 'is_active']
+    list_filter = ['is_active']
+    search_fields = ['code', 'name']
+    ordering = ['discount_percent']
+    list_editable = ['discount_percent', 'is_active']
+
+
 @admin.register(Booking)
 class BookingAdmin(admin.ModelAdmin):
-    list_display = ['id', 'client', 'session', 'seat', 'status', 'created_at', 'expires_at']
-    list_filter = ['status', 'session__date', 'session__hall']
+    list_display = ['id', 'client', 'session', 'seat', 'ticket_type', 'status', 'created_at', 'expires_at']
+    list_filter = ['status', 'session__date', 'session__hall', 'ticket_type']
     search_fields = ['client__username', 'session__movie__title', 'seat__row', 'seat__number']
     ordering = ['-created_at']
     readonly_fields = ['created_at']

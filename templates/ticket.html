@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Билет {{ ticket.barcode }} — Аврора{% endblock %}
+
+{% block content %}
+<main class="page-shell ticket-page" style="padding-top:2.5rem;padding-bottom:4rem;">
+    <nav class="text-xs text-muted ticket-nav" style="margin-bottom:1.5rem;" aria-label="Хлебные крошки">
+        <a href="{% url 'profile' %}">Мои билеты</a> <span style="opacity:.5">/</span> Билет {{ ticket.barcode }}
+    </nav>
+
+    <div class="section-rule" style="margin-bottom:1rem;"></div>
+    <p class="eyebrow">Электронный билет</p>
+    <h1 style="font-size:clamp(2.2rem,5vw,3rem);line-height:1;color:var(--text);margin:0 0 2rem;">БИЛЕТ</h1>
+
+    <article class="ticket-stub ticket-full" id="printTicket" style="max-width:44rem;">
+        <div class="ticket-info">
+            <div class="flex items-center gap-2 flex-wrap">
+                {% if ticket.status == 'active' %}<span class="badge badge-green">Активен</span>
+                {% elif ticket.status == 'used' %}<span class="badge badge-blue">Использован</span>
+                {% else %}<span class="badge badge-status-{{ ticket.status }}">{{ ticket.get_status_display }}</span>{% endif %}
+                {% if booking.ticket_type %}<span class="badge badge-gold">{{ booking.ticket_type.name }}</span>{% endif %}
+            </div>
+            <h2 style="font-size:2rem;color:var(--text);margin:.9rem 0 0;">{{ movie.title }}</h2>
+            <p class="text-sm text-muted" style="margin:.4rem 0 0;">
+                {{ movie.genre.name }} · {{ movie.duration }} мин · {{ movie.age_rating }}+
+            </p>
+
+            <div class="ticket-seats" style="margin-top:1.2rem;">
+                <span><b>Дата</b>{{ session.date|date:"d.m.Y" }}</span>
+                <span><b>Время</b>{{ session.time|time:"H:i" }}</span>
+                <span><b>Зал</b>{{ session.hall.number }} ({{ session.hall.get_type_display }})</span>
+                <span><b>Ряд</b>{{ booking.seat.row }}</span>
+                <span><b>Место</b>{{ booking.seat.number }}</span>
+                <span><b>Категория</b>{{ booking.seat.get_category_display }}</span>
+                <span><b>Цена</b>{{ ticket.price }} ₽</span>
+                <span><b>Номер</b>AUR-{{ booking.id|stringformat:"06d" }}</span>
+            </div>
+
+            <p class="text-xs text-muted" style="margin-top:1.2rem;">
+                Предъявите QR-код контролёру на входе. Билет именной:
+                {{ booking.client.get_full_name|default:booking.client.username }}.
+                {% if ticket.used_at %}<br>Погашен: {{ ticket.used_at|date:"d.m.Y H:i" }}{% endif %}
+            </p>
+        </div>
+
+        <div class="ticket-code ticket-qr-block">
+            <img class="ticket-qr-img" src="{{ qr_data_uri }}" alt="QR-код билета {{ ticket.barcode }}"
+                 width="220" height="220">
+            <span class="text-xs text-muted mono">{{ ticket.barcode }}</span>
+        </div>
+    </article>
+
+    <div class="flex gap-2 flex-wrap ticket-actions" style="margin-top:1.5rem;">
+        <button type="button" class="btn btn-primary" id="printBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            Печать билета
+        </button>
+        <a href="{% url 'profile' %}" class="btn btn-outline">← Мои билеты</a>
+    </div>
+</main>
+
+<style>
+@media print {
+    .site-header, .site-footer, .bottom-nav, .ticket-nav, .ticket-actions,
+    .section-rule, .eyebrow, .ticket-page > h1 { display: none !important; }
+    .ticket-page { padding: 0 !important; }
+    body { background: #fff !important; }
+    .ticket-full {
+        border: 2px solid #000 !important;
+        box-shadow: none !important;
+        page-break-inside: avoid;
+        max-width: 100% !important;
+        background: #fff !important;
+        color: #000 !important;
+    }
+    .ticket-full h2, .ticket-full b, .ticket-full span { color: #000 !important; }
+    .ticket-full .text-muted, .ticket-full .text-xs { color: #333 !important; }
+    .badge { border: 1px solid #000 !important; color: #000 !important; background: transparent !important; }
+    .ticket-qr-img { width: 200px !important; height: 200px !important; }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('printBtn').addEventListener('click', function () { window.print(); });
+</script>
+{% endblock %}

@@ -21,7 +21,7 @@ from django.utils import timezone
 
 from .models import (
     Booking, BookingStatus, Payment, PaymentStatus,
-    Session, Seat, Ticket, TicketStatus, log_audit,
+    Session, Seat, Ticket, TicketStatus, TicketType, log_audit,
 )
 
 ACTIVE_BOOKING_STATUSES = [
@@ -64,17 +64,21 @@ def validate_seat_ids(session, seat_ids):
         raise BookingError('Некорректный выбор мест (место не принадлежит залу сеанса)')
 
 
-def create_booking(user, session, seat_ids):
+def create_booking(user, session, seat_ids, ticket_type=None):
     """Атомарно удерживает места на BOOKING_HOLD_MINUTES («всё или ничего»).
 
     transaction.atomic() + select_for_update(); нельзя занятые места,
     прошедший сеанс, места чужого зала; лимит BOOKING_MAX_SEATS мест.
-    Сумма не принимается извне — фиксируется на сеансе.
+    Сумма не принимается извне — фиксируется на сеансе; тип билета
+    (скидка) применяется при оплате в confirm_payment.
     Возвращает (bookings, expires_at).
     """
     validate_session_bookable(session)
     validate_seat_ids(session, seat_ids)
     expires_at = timezone.now() + timedelta(minutes=settings.BOOKING_HOLD_MINUTES)
+
+    if ticket_type is not None and not ticket_type.is_active:
+        raise BookingError('Этот тип билета больше не действует')
 
     class SeatTaken(BookingError):
         def __init__(self):
@@ -100,6 +104,7 @@ def create_booking(user, session, seat_ids):
                     client=user,
                     session=session,
                     seat=seat,
+                    ticket_type=ticket_type,
                     status=BookingStatus.PENDING_PAYMENT,
                     expires_at=expires_at,
                 )
@@ -119,12 +124,26 @@ def create_booking(user, session, seat_ids):
 create_hold = create_booking
 
 
+def calculate_ticket_price(base_price, ticket_type=None):
+    """Цена билета = базовая цена категории × (100 − скидка типа)/100.
+
+    Считается только на сервере (сумма не принимается извне).
+    """
+    from decimal import Decimal, ROUND_HALF_UP
+
+    price = Decimal(base_price)
+    if ticket_type is not None and ticket_type.discount_percent:
+        price = price * (Decimal(100) - Decimal(ticket_type.discount_percent)) / Decimal(100)
+    return price.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+
 def confirm_payment(booking, method, actor):
     """Оплачивает бронь и создаёт Ticket + Completed Payment.
 
     Нельзя оплатить дважды, просроченную или отменённую бронь.
-    Цена берётся с сеанса (сумма не из запроса), штрихкод — uuid4.
-    Статус Booking → paid и Ticket → active ставит сигнал payment_post_save.
+    Цена берётся с сеанса с учётом скидки типа билета (сумма не из запроса),
+    штрихкод — uuid4. Статус Booking → paid и Ticket → active ставит
+    сигнал payment_post_save.
     """
     if booking.status not in [BookingStatus.PENDING_PAYMENT]:
         raise BookingError('Бронирование не ожидает оплаты')
@@ -133,10 +152,13 @@ def confirm_payment(booking, method, actor):
     if session_start_at(booking.session) <= timezone.now():
         raise BookingError('Сеанс уже начался — оплата невозможна')
 
+    base_price = booking.session.get_price_for_category(booking.seat.category)
+    price = calculate_ticket_price(base_price, booking.ticket_type)
+
     with transaction.atomic():
         ticket = Ticket.objects.create(
             booking=booking,
-            price=booking.session.get_price_for_category(booking.seat.category),
+            price=price,
             barcode=str(uuid4()).replace('-', '').upper()[:20],
             status=TicketStatus.ACTIVE,
         )
@@ -222,11 +244,12 @@ def cancel_booking(booking, actor, force=False):
     return booking
 
 
-def check_ticket(ticket):
+def check_ticket(ticket, actor=None):
     """Проверка билета контролёром: валидный помечается использованным.
 
     Повторная проверка, возвращённый/аннулированный — BookingError
     с понятным сообщением; неизвестный штрихкод — Ticket.DoesNotExist.
+    Успешная проверка журналируется (кто и когда погасил билет).
     Возвращает (ticket, message).
     """
     if ticket.status == TicketStatus.USED:
@@ -234,6 +257,12 @@ def check_ticket(ticket):
     if ticket.status in [TicketStatus.REFUNDED, TicketStatus.CANCELLED]:
         raise BookingError('Билет аннулирован или возвращён')
     ticket.mark_used()
+    log_audit(
+        actor, 'check_ticket',
+        f'Проверка билета {ticket.barcode} '
+        f'({ticket.booking.session.movie.title}), '
+        f'место {ticket.booking.seat.row}/{ticket.booking.seat.number}',
+    )
     return ticket, 'Билет действителен, вход разрешён'
 
 

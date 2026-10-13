@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Оплата брони — Аврора{% endblock %}
+
+{% block content %}
+<main class="page-shell" style="padding-top:2.5rem;padding-bottom:4rem;">
+    <nav class="text-xs text-muted" style="margin-bottom:1.5rem;" aria-label="Хлебные крошки">
+        <a href="{% url 'home' %}">Афиша</a> <span style="opacity:.5">/</span>
+        <a href="{% url 'film' session.movie.id %}">{{ session.movie.title }}</a> <span style="opacity:.5">/</span> Оплата
+    </nav>
+
+    <div class="section-rule" style="margin-bottom:1rem;"></div>
+    <p class="eyebrow">Оплата брони #{{ booking.id }}</p>
+    <h1 style="font-size:clamp(2.2rem,5vw,3rem);line-height:1;color:var(--text);margin:0 0 2rem;">ОПЛАТА</h1>
+
+    <div class="flex gap-6" style="align-items:flex-start;flex-wrap:wrap;">
+        <section class="panel p-5" style="flex:1;min-width:300px;max-width:36rem;">
+            <h2 style="font-size:1.8rem;color:var(--text);margin:0;">{{ session.movie.title }}</h2>
+            <p class="text-sm text-muted" style="margin:.4rem 0 0;">
+                {{ session.date|date:"d.m.Y" }}, {{ session.time|time:"H:i" }} ·
+                Зал {{ session.hall.number }} ({{ session.hall.get_type_display }}) ·
+                Ряд {{ booking.seat.row }}, место {{ booking.seat.number }}
+            </p>
+
+            {% if booking.ticket_type %}
+            <p class="text-sm" style="margin:.8rem 0 0;">
+                <span class="badge badge-gold">{{ booking.ticket_type.name }} −{{ booking.ticket_type.discount_percent }}%</span>
+            </p>
+            {% endif %}
+
+            <div class="summary-row" style="margin-top:1.2rem;">
+                <span class="sum-place">Базовая цена ({{ booking.seat.get_category_display }})</span>
+                <span class="sum-price">{{ base_price }} ₽</span>
+            </div>
+            {% if booking.ticket_type and booking.ticket_type.discount_percent %}
+            <div class="summary-row">
+                <span class="sum-place">Скидка «{{ booking.ticket_type.name }}»</span>
+                <span class="sum-price">−{{ booking.ticket_type.discount_percent }}%</span>
+            </div>
+            {% endif %}
+            <div class="summary-total">
+                <b>К оплате</b>
+                <b style="font-size:1.4rem;color:var(--gold);">{{ final_price }} ₽</b>
+            </div>
+
+            {% if can_pay %}
+            <div class="panel p-4" style="margin-top:1.2rem;display:flex;align-items:center;justify-content:space-between;gap:.75rem;">
+                <span class="text-sm text-muted">Место удерживается</span>
+                <span class="countdown" id="holdTimer" data-exp="{{ booking.expires_at|date:'c' }}">
+                    <span class="cd-dot"></span><span id="holdTimerText">—</span>
+                </span>
+            </div>
+
+            <form method="post" action="{% url 'pay_booking' booking.id %}" id="payForm" style="margin-top:1.25rem;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary w-full" style="height:3rem;" id="paySubmit">
+                    Оплатить онлайн · {{ final_price }} ₽
+                </button>
+            </form>
+            <p class="text-xs text-muted text-center" style="margin:.7rem 0 0;">
+                Способ оплаты: карта онлайн. Билет с QR-кодом появится сразу после оплаты.
+            </p>
+
+            <div id="holdExpired" hidden class="panel p-4" style="margin-top:1.25rem;border-color:var(--accent-hover);">
+                <p class="text-sm" style="margin:0;color:var(--accent-hover);">
+                    <b>Время удержания мест истекло.</b><br>
+                    Бронь аннулирована — вернитесь к выбору мест.
+                </p>
+                <a href="{% url 'booking' session.id %}" class="btn btn-outline btn-sm" style="margin-top:.75rem;">Выбрать места заново</a>
+            </div>
+            {% elif booking.status == 'paid' %}
+            <div class="panel p-4" style="margin-top:1.25rem;">
+                <p class="text-sm" style="margin:0;">Бронь уже оплачена.
+                    {% if booking.ticket %}<a href="{% url 'ticket_detail' booking.ticket.id %}">Открыть билет →</a>{% endif %}
+                </p>
+            </div>
+            {% else %}
+            <div class="panel p-4" style="margin-top:1.25rem;">
+                <p class="text-sm" style="margin:0;color:var(--accent-hover);">
+                    Ожидает оплаты — <a href="{% url 'booking' session.id %}">выберите места заново</a>.
+                </p>
+            </div>
+            {% endif %}
+        </section>
+    </div>
+</main>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    var wrap = document.getElementById('holdTimer');
+    if (!wrap) return;
+    var text = document.getElementById('holdTimerText');
+    var form = document.getElementById('payForm');
+    var submit = document.getElementById('paySubmit');
+    var expired = document.getElementById('holdExpired');
+    var exp = new Date(wrap.getAttribute('data-exp'));
+
+    function tick() {
+        var diff = exp - new Date();
+        if (diff <= 0) {
+            text.textContent = '00:00';
+            wrap.classList.add('warn');
+            if (form) form.hidden = true;
+            if (expired) expired.hidden = false;
+            Aurora.toast('Время удержания мест истекло', 'error');
+            setTimeout(function () {
+                window.location.href = '{% url "booking" session.id %}';
+            }, 3000);
+            return false;
+        }
+        var total = Math.floor(diff / 1000);
+        var mm = Math.floor(total / 60);
+        var ss = total % 60;
+        text.textContent = (mm < 10 ? '0' : '') + mm + ':' + (ss < 10 ? '0' : '') + ss;
+        wrap.classList.toggle('warn', diff < 120000);
+        return true;
+    }
+    tick();
+    setInterval(tick, 1000);
+
+    if (form) {
+        form.addEventListener('submit', function () {
+            submit.disabled = true;
+            submit.textContent = 'Проводим оплату…';
+        });
+    }
+})();
+</script>
+{% endblock %}

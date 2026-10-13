@@ -6,7 +6,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from cinema.models import Booking, Genre, Hall, Movie, Review, Session, Ticket, User
+from cinema.models import Booking, Genre, Hall, Movie, Review, Session, Ticket, TicketType, User
 
 DEMO_USERS = [
     ('admin', 'admin12345', 'admin', 'Администратор', 'Демо'),
@@ -149,6 +149,18 @@ class Command(BaseCommand):
         for name in DEMO_GENRES:
             Genre.objects.get_or_create(name=name)
         self.stdout.write(f'  жанров: {Genre.objects.count()}')
+
+        # ── Типы билетов (скидки настраиваются в админке) ─
+        for code, name, discount in [
+            ('adult', 'Взрослый', 0),
+            ('child', 'Детский', 50),
+            ('student', 'Студенческий', 20),
+        ]:
+            TicketType.objects.get_or_create(
+                code=code,
+                defaults={'name': name, 'discount_percent': discount, 'is_active': True},
+            )
+        self.stdout.write(f'  типов билетов: {TicketType.objects.count()}')
 
         # ── Фильмы с постерами и трейлерами ───────────
         poster_dir = Path(settings.MEDIA_ROOT) / 'posters'

@@ -9,7 +9,7 @@ from django.utils import timezone
 
 from rest_framework.test import APIClient
 
-from ..models import User, Genre, Movie, Hall, Seat, Session, Booking, Ticket, Payment, Favorite, Review
+from ..models import User, Genre, Movie, Hall, Seat, Session, Booking, Ticket, Payment, Favorite, Review, TicketStatus
 from .base import CinemaFixture
 
 
@@ -195,6 +195,13 @@ class FavoriteReviewTests(CinemaFixture):
         self.assertIn(resp.status_code, [401, 403])
 
     def test_review_create_update_and_rating_summary(self):
+        # По правилам оценку может оставить только клиент с использованным
+        # билетом на этот фильм — сначала «посещаем» сеанс
+        booking = self.make_booking(status='used')
+        Ticket.objects.create(
+            booking=booking, price=300, barcode='REVIEWUSED1',
+            status=TicketStatus.USED,
+        )
         resp = self.api.post('/api/reviews/', {
             'movie': self.movie.id, 'rating': 5, 'comment': 'Отлично',
         }, format='json')
@@ -224,6 +231,14 @@ class FavoriteReviewTests(CinemaFixture):
         self.client.force_login(self.client_user)
         resp = self.client.get(f'/movie/{self.movie.id}/')
         self.assertEqual(resp.status_code, 200)
+        # форма отзыва появляется только после посещения сеанса
+        self.assertContains(resp, 'после посещения сеанса')
+        booking = self.make_booking(status='used')
+        Ticket.objects.create(
+            booking=booking, price=300, barcode='RENDERUSED1',
+            status=TicketStatus.USED,
+        )
+        resp = self.client.get(f'/movie/{self.movie.id}/')
         self.assertContains(resp, 'reviewForm')
 
 

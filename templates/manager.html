@@ -12,7 +12,9 @@
     <div class="flex items-center gap-2 flex-wrap">
         <a href="{% url 'staff_sessions' %}" class="btn btn-outline btn-sm">Сеансы</a>
         <a href="{% url 'staff_movies' %}" class="btn btn-outline btn-sm">Фильмы</a>
-        <a href="{% url 'staff_reports' %}" class="btn btn-primary btn-sm">Отчёты</a>
+        <a href="{% url 'staff_reports' %}" class="btn btn-outline btn-sm">Отчёты</a>
+        <a href="{% url 'staff_reports_export' %}?date_from={{ date_from|date:'Y-m-d' }}&date_to={{ date_to|date:'Y-m-d' }}"
+           class="btn btn-primary btn-sm">Экспорт CSV</a>
     </div>
 </div>
 
@@ -43,42 +45,41 @@
     </div>
 </div>
 
+<!-- Period filter -->
+<section class="panel p-4" style="margin-bottom:1.5rem;">
+    <form method="get" class="flex items-end gap-3 flex-wrap" id="periodFilter">
+        <label class="field">
+            <span class="field-label">Период с</span>
+            <input type="date" class="form-control" name="date_from" value="{{ date_from|date:'Y-m-d' }}">
+        </label>
+        <label class="field">
+            <span class="field-label">по</span>
+            <input type="date" class="form-control" name="date_to" value="{{ date_to|date:'Y-m-d' }}">
+        </label>
+        <button type="submit" class="btn btn-primary btn-sm">Показать</button>
+        <a href="{% url 'manager' %}" class="btn btn-outline btn-sm">Сбросить</a>
+    </form>
+</section>
+
 <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:1rem;margin-bottom:1.5rem;" class="dash-grid">
     <section class="panel p-5">
         <div class="flex items-center justify-between gap-2" style="margin-bottom:1.25rem;">
-            <h2 style="font-size:1.5rem;color:var(--text);margin:0;">ВЫРУЧКА ЗА 7 ДНЕЙ</h2>
-            <span class="text-xs text-muted">{{ chart.0.day }} — {{ chart.6.day }}</span>
+            <h2 style="font-size:1.5rem;color:var(--text);margin:0;">ПРОДАЖИ ПО ДНЯМ</h2>
+            <span class="text-xs text-muted">{{ date_from|date:"d.m" }} — {{ date_to|date:"d.m" }}</span>
         </div>
-        <div class="bar-chart">
-            {% for c in chart %}
-            <div class="bar-col" title="{{ c.day }}: {{ c.revenue|floatformat:0 }} ₽">
-                <span class="bar-val">{{ c.revenue|floatformat:0 }}</span>
-                <div class="bar" style="height:{{ c.percent }}%;"></div>
-                <span class="bar-day">{{ c.day }}</span>
-            </div>
-            {% endfor %}
-        </div>
+        <canvas id="salesChart" height="220" aria-label="График продаж по дням" role="img"></canvas>
     </section>
 
     <section class="panel p-5">
-        <h2 style="font-size:1.5rem;color:var(--text);margin:0 0 1.25rem;">ТОП ФИЛЬМОВ (7 ДНЕЙ)</h2>
-        <div class="flex flex-col gap-3">
-            {% for t in top_films %}
-            <div>
-                <div class="flex items-center justify-between gap-2 text-sm" style="margin-bottom:.35rem;">
-                    <span style="color:var(--text);">{{ t.title }}</span>
-                    <span class="text-muted">{{ t.tickets }} б.</span>
-                </div>
-                <div style="height:6px;border-radius:99px;background:var(--surface-raised);overflow:hidden;">
-                    <div style="height:100%;width:{{ t.percent }}%;background:linear-gradient(90deg,var(--accent),var(--accent-hover));border-radius:99px;"></div>
-                </div>
-            </div>
-            {% empty %}
-            <p class="text-sm text-muted" style="margin:0;">За неделю билетов не продано.</p>
-            {% endfor %}
-        </div>
+        <h2 style="font-size:1.5rem;color:var(--text);margin:0 0 1.25rem;">ТОП-5 ФИЛЬМОВ</h2>
+        <canvas id="topChart" height="220" aria-label="Топ фильмов по билетам" role="img"></canvas>
     </section>
 </div>
+
+<section class="panel p-5" style="margin-bottom:1.5rem;">
+    <h2 style="font-size:1.5rem;color:var(--text);margin:0 0 1.25rem;">ЗАГРУЗКА ЗАЛОВ ЗА ПЕРИОД</h2>
+    <canvas id="hallsChart" height="180" aria-label="Загрузка залов в процентах" role="img"></canvas>
+</section>
 
 <section class="panel" style="overflow:hidden;">
     <div class="flex items-center justify-between gap-2" style="padding:1.25rem 1.25rem 0;">
@@ -120,4 +121,91 @@
 @media (max-width: 760px) { .grid-4 { grid-template-columns: repeat(2, 1fr) !important; } }
 @media (max-width: 460px) { .grid-4 { grid-template-columns: 1fr !important; } }
 </style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    if (typeof Chart === 'undefined') return;
+    var accent = Aurora && Aurora.cssVar ? Aurora.cssVar('--accent', '#e53950') : '#e53950';
+    var gold = Aurora && Aurora.cssVar ? Aurora.cssVar('--gold', '#d4a853') : '#d4a853';
+    var muted = '#8b8d97';
+    var grid = 'rgba(255,255,255,.06)';
+
+    Chart.defaults.color = muted;
+    Chart.defaults.borderColor = grid;
+    Chart.defaults.font.family = "'Inter', sans-serif";
+
+    new Chart(document.getElementById('salesChart'), {
+        type: 'bar',
+        data: {
+            labels: {{ chart_labels|safe }},
+            datasets: [{
+                label: 'Выручка, ₽',
+                data: {{ chart_data|safe }},
+                backgroundColor: 'rgba(229,57,80,.55)',
+                borderColor: accent,
+                borderWidth: 1,
+                borderRadius: 6,
+            }],
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, grid: { color: grid } },
+                x: { grid: { display: false } },
+            },
+        },
+    });
+
+    new Chart(document.getElementById('topChart'), {
+        type: 'bar',
+        data: {
+            labels: {{ top_labels|safe }},
+            datasets: [{
+                label: 'Билетов',
+                data: {{ top_data|safe }},
+                backgroundColor: 'rgba(212,168,83,.55)',
+                borderColor: gold,
+                borderWidth: 1,
+                borderRadius: 6,
+            }],
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { beginAtZero: true, grid: { color: grid } },
+                y: { grid: { display: false } },
+            },
+        },
+    });
+
+    new Chart(document.getElementById('hallsChart'), {
+        type: 'bar',
+        data: {
+            labels: {{ hall_labels|safe }},
+            datasets: [{
+                label: 'Загрузка, %',
+                data: {{ hall_data|safe }},
+                backgroundColor: 'rgba(90,160,255,.5)',
+                borderColor: '#5aa0ff',
+                borderWidth: 1,
+                borderRadius: 6,
+            }],
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, max: 100, grid: { color: grid } },
+                x: { grid: { display: false } },
+            },
+        },
+    });
+})();
+</script>
 {% endblock %}

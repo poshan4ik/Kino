@@ -870,6 +870,7 @@
     renderQR: renderQR,
     esc: esc,
     guard: guard,
+    cssVar: cssVar,
     MAX_SEATS: MAX_SEATS,
   };
 })();

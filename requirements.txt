@@ -5,6 +5,7 @@ django-filter
 drf-spectacular
 python-dotenv
 Pillow
+qrcode
 whitenoise
 dj-database-url
 psycopg2-binary

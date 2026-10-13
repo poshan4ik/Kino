@@ -52,7 +52,8 @@
                                     {% if b.expires_at %}
                                     <span class="countdown" data-countdown="{{ b.expires_at|date:'c' }}"><span class="cd-dot"></span><span>—</span></span>
                                     {% endif %}
-                                    <button type="button" class="btn btn-primary btn-sm" data-pay-booking="{{ b.id }}">Оплатить онлайн</button>
+                                    <a href="{% url 'pay_booking' b.id %}" class="btn btn-primary btn-sm">Оплатить</a>
+                                    <button type="button" class="btn btn-outline btn-sm" data-pay-booking="{{ b.id }}">Быстрая оплата</button>
                                     <form method="post" action="{% url 'profile_cancel_booking' b.id %}" style="display:inline;"
                                           onsubmit="return confirm('Отменить бронь? Место станет свободным.');">
                                         {% csrf_token %}
@@ -84,6 +85,7 @@
                                     <span><b>Сумма</b>{{ b.ticket.price }} ₽</span>
                                     <span><b>Номер</b>AUR-{{ b.id|stringformat:"06d" }}</span>
                                 </div>
+                                <a href="{% url 'ticket_detail' b.ticket.id %}" class="btn btn-outline btn-sm" style="margin-top:.9rem;">Открыть билет →</a>
                             </div>
                             <div class="ticket-code">
                                 <div class="ticket-qr" data-qr="{{ b.ticket.barcode }}" aria-label="QR-код билета"></div>

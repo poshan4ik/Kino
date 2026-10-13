@@ -70,6 +70,26 @@
                 <p class="text-sm text-muted" style="margin:0;">Выберите места на схеме — до {{ BOOKING_MAX_SEATS }}</p>
             </div>
 
+            {% if ticket_types %}
+            <div style="padding:1rem 0;border-top:1px solid var(--border);">
+                <p class="eyebrow" style="margin-bottom:.6rem;">Тип билета</p>
+                <div class="flex flex-col gap-2" id="ttList">
+                    {% for t in ticket_types %}
+                    <label class="panel p-3 flex items-center gap-3 cursor-pointer" style="padding:.7rem 1rem;">
+                        <input type="radio" name="ticket_type" value="{{ t.id }}"
+                               class="tt-radio" {% if forloop.first %}checked{% endif %}>
+                        <span style="flex:1;">
+                            <b style="color:var(--text);font-size:.95rem;">{{ t.name }}</b>
+                            {% if t.discount_percent %}
+                            <span class="badge badge-gold" style="margin-left:.5rem;">−{{ t.discount_percent }}%</span>
+                            {% endif %}
+                        </span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
             <div class="summary-total">
                 <b>Итого</b>
                 <b id="total" style="font-size:1.3rem;color:var(--gold);">0 ₽</b>
@@ -109,6 +129,17 @@
     var inp = document.getElementById('seatsInp');
     var max = Aurora.MAX_SEATS;
 
+    var ttDiscounts = {};
+    document.querySelectorAll('#ttList input.tt-radio').forEach(function (r) {
+        var card = r.closest('label');
+        var badge = card ? card.querySelector('.badge') : null;
+        ttDiscounts[r.value] = badge ? parseFloat(badge.textContent.replace(/[^\d]/g, '')) || 0 : 0;
+    });
+    function currentDiscount() {
+        var checked = document.querySelector('#ttList input.tt-radio:checked');
+        return checked ? (ttDiscounts[checked.value] || 0) : 0;
+    }
+
     seats.forEach(function (s) {
         s.addEventListener('click', function () {
             var id = this.dataset.id;
@@ -127,14 +158,20 @@
         });
     });
 
+    document.querySelectorAll('#ttList input.tt-radio').forEach(function (r) {
+        r.addEventListener('change', upd);
+    });
+
     function upd() {
-        var t = 0, html = '';
+        var t = 0, base = 0, html = '';
+        var disc = currentDiscount();
         sel.forEach(function (id) {
             var el = document.querySelector('.seat[data-id="' + id + '"]');
             var r = el.dataset.row, n = el.dataset.num, p = parseFloat(el.dataset.price);
-            t += p;
+            base += p;
+            t += p * (100 - disc) / 100;
             html += '<div class="summary-row"><span class="sum-place">Ряд ' + r + ', место ' + n +
-                '</span><span class="sum-price">' + Aurora.formatPrice(p) + '</span></div>';
+                '</span><span class="sum-price">' + Aurora.formatPrice(p * (100 - disc) / 100) + '</span></div>';
         });
         list.innerHTML = sel.size ? html :
             '<p class="text-sm text-muted" style="margin:0;">Выберите места на схеме — до ' + max + '</p>';
