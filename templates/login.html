@@ -12,7 +12,7 @@
         <p class="eyebrow">С возвращением</p>
         <h1 style="font-size:2.6rem;line-height:1;color:var(--text);margin:0;">ВХОД</h1>
 
-        <form method="post" action="{% url 'login' %}" style="display:grid;gap:1.1rem;margin-top:1.8rem;">
+        <form method="post" action="{% url 'login' %}" style="display:grid;gap:1.1rem;margin-top:1.8rem;" autocomplete="off" novalidate>
             {% csrf_token %}
             {% if form.non_field_errors %}
             <div class="alert alert-error">{{ form.non_field_errors }}</div>
@@ -21,13 +21,14 @@
             <label class="field">
                 <span class="field-label">Логин</span>
                 {{ form.username }}
+                {% if form.username.errors %}<ul class="errorlist">{% for e in form.username.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
             </label>
 
             <label class="field">
                 <span class="field-label">Пароль</span>
                 {{ form.password }}
+                {% if form.password.errors %}<ul class="errorlist">{% for e in form.password.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
             </label>
-
             <button type="submit" class="btn btn-primary" style="height:3rem;margin-top:.4rem;">Войти</button>
         </form>
 

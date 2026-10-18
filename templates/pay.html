@@ -53,12 +53,29 @@
 
             <form method="post" action="{% url 'pay_booking' booking.id %}" id="payForm" style="margin-top:1.25rem;">
                 {% csrf_token %}
+                <input type="hidden" name="method" value="online" id="payMethod">
                 <button type="submit" class="btn btn-primary w-full" style="height:3rem;" id="paySubmit">
                     Оплатить онлайн · {{ final_price }} ₽
                 </button>
             </form>
+            <div class="flex gap-2" style="margin-top:.75rem;" id="gatewayButtons">
+                <form method="post" action="{% url 'pay_booking' booking.id %}" class="w-full">
+                    {% csrf_token %}
+                    <input type="hidden" name="method" value="kaspi">
+                    <button type="submit" class="btn btn-outline w-full" style="height:3rem;color:#E3262E;border-color:#E3262E;" id="kaspiBtn">
+                        Kaspi Gold
+                    </button>
+                </form>
+                <form method="post" action="{% url 'pay_booking' booking.id %}" class="w-full">
+                    {% csrf_token %}
+                    <input type="hidden" name="method" value="halyk">
+                    <button type="submit" class="btn btn-outline w-full" style="height:3rem;color:#00A651;border-color:#00A651;" id="halykBtn">
+                        Халык Банк
+                    </button>
+                </form>
+            </div>
             <p class="text-xs text-muted text-center" style="margin:.7rem 0 0;">
-                Способ оплаты: карта онлайн. Билет с QR-кодом появится сразу после оплаты.
+                Способ оплаты: карта онлайн, Kaspi или Халык. Билет с QR-кодом появится сразу после оплаты.
             </p>
 
             <div id="holdExpired" hidden class="panel p-4" style="margin-top:1.25rem;border-color:var(--accent-hover);">
@@ -93,6 +110,7 @@
     if (!wrap) return;
     var text = document.getElementById('holdTimerText');
     var form = document.getElementById('payForm');
+    var gatewayButtons = document.getElementById('gatewayButtons');
     var submit = document.getElementById('paySubmit');
     var expired = document.getElementById('holdExpired');
     var exp = new Date(wrap.getAttribute('data-exp'));
@@ -103,6 +121,7 @@
             text.textContent = '00:00';
             wrap.classList.add('warn');
             if (form) form.hidden = true;
+            if (gatewayButtons) gatewayButtons.hidden = true;
             if (expired) expired.hidden = false;
             Aurora.toast('Время удержания мест истекло', 'error');
             setTimeout(function () {

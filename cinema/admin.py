@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import (
     User, Genre, Movie, Hall, Seat, Session, Booking, Ticket, Payment,
-    AuditLog, log_audit, Favorite, Review, TicketType,
+    AuditLog, log_audit, Favorite, Review, TicketType, PaymentIntent,
 )
 
 # ── Брендинг админ-панели «Аврора» ─────────────────────────
@@ -149,6 +149,16 @@ class PaymentAdmin(admin.ModelAdmin):
     search_fields = ['ticket__barcode', 'transaction_id']
     ordering = ['-created_at']
     readonly_fields = ['created_at', 'completed_at']
+    date_hierarchy = 'created_at'
+
+
+@admin.register(PaymentIntent)
+class PaymentIntentAdmin(admin.ModelAdmin):
+    list_display = ['external_id', 'booking', 'provider', 'amount', 'status', 'created_at', 'processed_at']
+    list_filter = ['provider', 'status']
+    search_fields = ['external_id', 'transaction_id', 'booking__client__username']
+    ordering = ['-created_at']
+    readonly_fields = ['external_id', 'created_at', 'processed_at', 'payload']
     date_hierarchy = 'created_at'
 
 

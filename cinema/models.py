@@ -1,3 +1,5 @@
+import uuid
+
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
@@ -486,6 +488,8 @@ class Payment(StatusTransitionMixin, models.Model):
         ('cash', 'Наличные'),
         ('card', 'Карта'),
         ('online', 'Онлайн'),
+        ('kaspi', 'Kaspi Gold'),
+        ('halyk', 'Халык Банк'),
     ]
     
     STATUS_CHOICES = PaymentStatus.choices
@@ -515,6 +519,70 @@ class Payment(StatusTransitionMixin, models.Model):
     
     def __str__(self):
         return f'Платёж #{self.id} - {self.amount} руб. ({self.get_status_display()})'
+
+
+class PaymentIntent(models.Model):
+    """Намерение онлайн-оплаты Kaspi/Халык до подтверждения webhook'ом.
+
+    Создаётся до Ticket (Payment FK на Ticket), поэтому хранится отдельно.
+    Провайдер после оплаты шлёт подписанный webhook; intent идемпотентно
+    переводится в success/failed.
+    """
+    PROVIDER_KASPI = 'kaspi'
+    PROVIDER_HALYK = 'halyk'
+    PROVIDER_CHOICES = [
+        (PROVIDER_KASPI, 'Kaspi Gold'),
+        (PROVIDER_HALYK, 'Халык Банк'),
+    ]
+
+    STATUS_PENDING = 'pending'
+    STATUS_SUCCESS = 'success'
+    STATUS_FAILED = 'failed'
+    STATUS_CHOICES = [
+        (STATUS_PENDING, 'Ожидает оплаты'),
+        (STATUS_SUCCESS, 'Успешно оплачен'),
+        (STATUS_FAILED, 'Отклонён'),
+    ]
+
+    booking = models.ForeignKey(
+        Booking, on_delete=models.CASCADE,
+        related_name='payment_intents', verbose_name='Бронирование',
+    )
+    provider = models.CharField(
+        max_length=20, choices=PROVIDER_CHOICES, verbose_name='Провайдер',
+    )
+    external_id = models.UUIDField(
+        unique=True, editable=False, default=uuid.uuid4, verbose_name='Внешний ID',
+    )
+    amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Сумма')
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING,
+        verbose_name='Статус',
+    )
+    transaction_id = models.CharField(
+        max_length=100, blank=True, verbose_name='ID транзакции',
+    )
+    payload = models.JSONField(
+        default=dict, blank=True, verbose_name='Данные webhook',
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Создано')
+    processed_at = models.DateTimeField(
+        null=True, blank=True, verbose_name='Обработано',
+    )
+
+    class Meta:
+        verbose_name = 'Намерение онлайн-оплаты'
+        verbose_name_plural = 'Намерения онлайн-оплаты'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['provider', 'status'], name='idx_intent_provider_status'),
+        ]
+
+    def __str__(self):
+        return (
+            f'Намерение {self.external_id} ({self.get_provider_display()}) — '
+            f'{self.amount} руб. [{self.get_status_display()}]'
+        )
 
 
 class AuditLog(models.Model):

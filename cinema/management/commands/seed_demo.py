@@ -139,6 +139,10 @@ class Command(BaseCommand):
             if created:
                 user.set_password(password)
                 user.save()
+            if role == 'admin' and not (user.is_staff and user.is_superuser):
+                user.is_staff = True
+                user.is_superuser = True
+                user.save()
             self.stdout.write(f'  {'+' if created else '='} {username} ({role})')
 
         self.stdout.write(self.style.SUCCESS('Демо-аккаунты:'))

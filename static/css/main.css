@@ -1551,6 +1551,10 @@ textarea.form-control { height: auto; min-height: 88px; padding: 0.75rem 1rem; r
 @media (min-width: 640px) {
   .ticket-stub { grid-template-columns: 1fr 230px; }
   .ticket-code { border-top: 0; border-left: 1px dashed var(--border-strong); }
+  /* полная страница билета: колонка с QR шире, чтобы 220px картинка не обрезалась */
+  .ticket-stub.ticket-full { grid-template-columns: 1fr 300px; }
+  .ticket-stub.ticket-full .ticket-code { min-width: 0; }
+  .ticket-stub.ticket-full::after { right: 300px; }
 }
 
 /* ── Staff shell ────────────────────────────────────────── */

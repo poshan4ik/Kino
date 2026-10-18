@@ -12,10 +12,15 @@ from django.db.models.functions import TruncDate
 from django.db import transaction, connection
 from django.db.utils import IntegrityError
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+import json
+import uuid
 from datetime import timedelta, date
 
-from .models import User, Genre, Movie, Hall, Seat, Session, Booking, Ticket, Payment, AuditLog, Favorite, Review, TicketType, log_audit
+from .models import User, Genre, Movie, Hall, Seat, Session, Booking, Ticket, Payment, PaymentIntent, AuditLog, Favorite, Review, TicketType, log_audit
 from . import services
+from . import payments
 from .serializers import (
     UserSerializer, UserAdminSerializer, UserCreateSerializer, GenreSerializer, MovieSerializer,
     MovieListSerializer, HallSerializer, SeatSerializer, SessionSerializer,
@@ -644,7 +649,7 @@ class DashboardViewSet(viewsets.ViewSet):
 
 
 # Frontend Views
-from django.views.generic import TemplateView, FormView
+from django.views.generic import TemplateView, FormView, View
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
@@ -993,12 +998,131 @@ class PaymentPageView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         if booking.status != 'pending_payment':
             messages.error(request, 'Это бронирование не ожидает оплаты')
             return redirect('profile')
+
+        method = request.POST.get('method', 'online')
+        if method in payments.PROVIDERS:
+            # Онлайн-оплата Kaspi/Халык: создаём intent и уходим в демо-шлюз
+            try:
+                intent = payments.create_intent(booking, method)
+            except payments.PaymentGatewayError as exc:
+                messages.error(request, exc.message)
+                return redirect('booking', session_id=booking.session_id)
+            return redirect('payment_gateway', external_id=intent.external_id)
+
         try:
             ticket = services.confirm_payment(booking, 'online', request.user)
         except services.BookingError as exc:
             messages.error(request, exc.message)
             return redirect('booking', session_id=booking.session_id)
         return redirect('ticket_detail', pk=ticket.pk)
+
+
+class PaymentGatewayView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    """Демо-шлюз Kaspi/Халык: страница «оплаты у провайдера».
+
+    Показывает брендинг провайдера и кнопки успеха/отказа. В боевой
+    интеграции вместо кнопок пользователь был бы редиректнут на сайт
+    банка; здесь решение шлёт подписанный webhook в payment_webhook.
+    """
+    template_name = 'pay/gateway.html'
+    login_url = 'login'
+
+    def test_func(self):
+        intent = get_object_or_404(
+            PaymentIntent.objects.select_related('booking__client'),
+            external_id=self.kwargs['external_id'],
+        )
+        self.intent_obj = intent
+        user = self.request.user
+        return (
+            intent.booking.client_id == user.id
+            or user.role in ['cashier', 'manager', 'admin']
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        intent = self.intent_obj
+        context['intent'] = intent
+        context['booking'] = intent.booking
+        context['session'] = intent.booking.session
+        context['provider_label'] = intent.get_provider_display()
+        context['is_kaspi'] = intent.provider == PaymentIntent.PROVIDER_KASPI
+        return context
+
+
+class PaymentGatewayDecideView(LoginRequiredMixin, UserPassesTestMixin, View):
+    """Демо-кнопки шлюза: успех/отказ → подписанный webhook в payment_webhook."""
+    login_url = 'login'
+
+    def test_func(self):
+        intent = get_object_or_404(
+            PaymentIntent.objects.select_related('booking__client'),
+            external_id=self.kwargs['external_id'],
+        )
+        self.intent_obj = intent
+        user = self.request.user
+        return (
+            intent.booking.client_id == user.id
+            or user.role in ['cashier', 'manager', 'admin']
+        )
+
+    def post(self, request, *args, **kwargs):
+        intent = self.intent_obj
+        decision = request.POST.get('decision')
+        if decision not in ('success', 'declined'):
+            messages.error(request, 'Некорректное решение платежа')
+            return redirect('payment_gateway', external_id=intent.external_id)
+
+        payload = {
+            'provider': intent.provider,
+            'external_id': str(intent.external_id),
+            'status': decision,
+            'amount': str(intent.amount),
+            'transaction_id': f'{intent.provider}-{uuid.uuid4().hex[:16].upper()}',
+            'timestamp': timezone.now().isoformat(),
+        }
+        signature = payments.sign_payload(payload)
+        try:
+            result = payments.process_webhook(intent.provider, payload, signature)
+        except payments.PaymentGatewayError as exc:
+            messages.error(request, exc.message)
+            if exc.code == 409:
+                return redirect('booking', session_id=intent.booking.session_id)
+            return redirect('payment_gateway', external_id=intent.external_id)
+
+        if result['status'] == PaymentIntent.STATUS_SUCCESS:
+            messages.success(request, 'Оплата прошла успешно — билет готов')
+            ticket_id = result.get('ticket_id')
+            if not ticket_id:
+                # Идемпотентный повтор: intent уже закрыт, берём билет брони
+                booking = intent.booking
+                ticket_id = booking.ticket.id if hasattr(booking, 'ticket') else None
+            if ticket_id:
+                return redirect('ticket_detail', pk=ticket_id)
+            return redirect('profile')
+        messages.error(request, 'Платёж отклонён провайдером. Место ещё удерживается.')
+        return redirect('pay_booking', booking_id=intent.booking_id)
+
+
+@csrf_exempt
+def payment_webhook(request, provider):
+    """HTTP-эндпоинт webhook'а провайдера (Kaspi/Халык).
+
+    Ожидает JSON {provider, external_id, status, amount, transaction_id,
+    timestamp} и заголовок X-Signature = HMAC-SHA256 канонического payload.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Метод не поддерживается'}, status=405)
+    try:
+        payload = json.loads(request.body.decode('utf-8'))
+    except (ValueError, UnicodeDecodeError):
+        return JsonResponse({'error': 'Некорректный JSON'}, status=400)
+    signature = request.META.get('HTTP_X_SIGNATURE', '')
+    try:
+        result = payments.process_webhook(provider, payload, signature)
+    except payments.PaymentGatewayError as exc:
+        return JsonResponse({'error': exc.message}, status=exc.code)
+    return JsonResponse(result, status=200)
 
 
 class BookingView(LoginRequiredMixin, TemplateView):

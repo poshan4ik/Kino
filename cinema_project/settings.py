@@ -39,7 +39,7 @@ if not SECRET_KEY:
             'Set it in .env or environment variables.'
         )
 
-ALLOWED_HOSTS = env_list('ALLOWED_HOSTS', 'localhost,127.0.0.1')
+ALLOWED_HOSTS = env_list('ALLOWED_HOSTS', 'localhost,127.0.0.1,testserver')
 CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS')
 
 INSTALLED_APPS = [
@@ -210,6 +210,11 @@ SESSION_SAVE_EVERY_REQUEST = True
 BOOKING_MAX_SEATS = env_int('BOOKING_MAX_SEATS', 10)
 BOOKING_HOLD_MINUTES = env_int('BOOKING_HOLD_MINUTES', 15)
 SESSION_BUFFER_MINUTES = env_int('SESSION_BUFFER_MINUTES', 20)
+
+# ── Платёжный шлюз (Kaspi/Халык) ────────────────────────
+# Секрет HMAC-SHA256 для подписи webhook'ов провайдера.
+# В проде задаётся через PAYMENT_WEBHOOK_SECRET; по умолчанию — SECRET_KEY.
+PAYMENT_WEBHOOK_SECRET = os.getenv('PAYMENT_WEBHOOK_SECRET', '') or SECRET_KEY
 
 # ── Логирование ─────────────────────────────────────────
 LOGGING = {

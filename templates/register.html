@@ -12,7 +12,7 @@
         <p class="eyebrow">Новый зритель</p>
         <h1 style="font-size:2.6rem;line-height:1;color:var(--text);margin:0;">РЕГИСТРАЦИЯ</h1>
 
-        <form method="post" action="{% url 'register' %}" style="display:grid;gap:1.1rem;margin-top:1.8rem;">
+        <form method="post" action="{% url 'register' %}" style="display:grid;gap:1.1rem;margin-top:1.8rem;" novalidate>
             {% csrf_token %}
             {% if form.non_field_errors %}
             <div class="alert alert-error">{{ form.non_field_errors }}</div>
@@ -22,36 +22,43 @@
                 <label class="field">
                     <span class="field-label">Имя</span>
                     {{ form.first_name }}
+                    {% if form.first_name.errors %}<ul class="errorlist">{% for e in form.first_name.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
                 </label>
                 <label class="field">
                     <span class="field-label">Фамилия</span>
                     {{ form.last_name }}
+                    {% if form.last_name.errors %}<ul class="errorlist">{% for e in form.last_name.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
                 </label>
             </div>
 
             <label class="field">
                 <span class="field-label">Email</span>
                 {{ form.email }}
+                {% if form.email.errors %}<ul class="errorlist">{% for e in form.email.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
             </label>
 
             <label class="field">
                 <span class="field-label">Телефон</span>
                 {{ form.phone }}
+                {% if form.phone.errors %}<ul class="errorlist">{% for e in form.phone.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
             </label>
 
             <label class="field">
                 <span class="field-label">Логин</span>
                 {{ form.username }}
+                {% if form.username.errors %}<ul class="errorlist">{% for e in form.username.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
             </label>
 
             <div class="grid-2" style="gap:1rem;">
                 <label class="field">
                     <span class="field-label">Пароль</span>
                     {{ form.password1 }}
+                    {% if form.password1.errors %}<ul class="errorlist">{% for e in form.password1.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
                 </label>
                 <label class="field">
                     <span class="field-label">Повторите пароль</span>
                     {{ form.password2 }}
+                    {% if form.password2.errors %}<ul class="errorlist">{% for e in form.password2.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
                 </label>
             </div>
 
@@ -59,6 +66,7 @@
                 {{ form.terms }}
                 <span>Соглашаюсь с условиями использования и обработкой персональных данных</span>
             </label>
+            {% if form.terms.errors %}<ul class="errorlist" style="margin-top:-.6rem;">{% for e in form.terms.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
 
             <button type="submit" class="btn btn-primary" style="height:3rem;margin-top:.4rem;">Создать аккаунт</button>
         </form>

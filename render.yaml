@@ -1,4 +1,4 @@
-services:
+﻿services:
   web:
     type: web
     runtime: python
@@ -11,9 +11,9 @@ services:
       - key: DEBUG
         value: "False"
       - key: ALLOWED_HOSTS
-        sync: false
+        value: ".onrender.com"
       - key: CSRF_TRUSTED_ORIGINS
-        sync: false
+        value: "https://*.onrender.com"
       - key: DATABASE_URL
         fromDatabase:
           name: aurora-db

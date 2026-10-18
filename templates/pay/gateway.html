@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% block title %}Оплата через {{ provider_label }} — Аврора{% endblock %}
+
+{% block content %}
+<main class="page-shell" style="padding-top:2.5rem;padding-bottom:4rem;">
+    <nav class="text-xs text-muted" style="margin-bottom:1.5rem;" aria-label="Хлебные крошки">
+        <a href="{% url 'home' %}">Афиша</a> <span style="opacity:.5">/</span>
+        <a href="{% url 'pay_booking' booking.id %}">Оплата</a> <span style="opacity:.5">/</span>
+        {{ provider_label }}
+    </nav>
+
+    <div class="section-rule" style="margin-bottom:1rem;"></div>
+    <p class="eyebrow">Платёжный шлюз · демо-режим</p>
+    <h1 style="font-size:clamp(2rem,5vw,2.6rem);line-height:1;color:var(--text);margin:0 0 1.5rem;">
+        ОПЛАТА · {{ provider_label|upper }}
+    </h1>
+
+    <div class="panel p-5" style="max-width:28rem;">
+        <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;">
+            <div style="width:3rem;height:3rem;border-radius:.75rem;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:1.1rem;
+                {% if is_kaspi %}background:#E3262E;{% else %}background:#00A651;{% endif %}">
+                {% if is_kaspi %}K{% else %}Х{% endif %}
+            </div>
+            <div>
+                <p style="margin:0;font-weight:600;color:var(--text);">{{ provider_label }}</p>
+                <p class="text-xs text-muted" style="margin:.15rem 0 0;">Кинотеатр «Аврора» · Бронь #{{ booking.id }}</p>
+            </div>
+        </div>
+
+        <div class="summary-row">
+            <span class="sum-place">{{ session.movie.title }}</span>
+            <span class="sum-price">{{ session.date|date:"d.m.Y" }}, {{ session.time|time:"H:i" }}</span>
+        </div>
+        <div class="summary-row">
+            <span class="sum-place">Зал {{ session.hall.number }} · Ряд {{ booking.seat.row }}, место {{ booking.seat.number }}</span>
+            <span class="sum-price">—</span>
+        </div>
+        <div class="summary-total">
+            <b>К оплате</b>
+            <b style="font-size:1.4rem;color:var(--gold);">{{ intent.amount }} ₽</b>
+        </div>
+
+        {% if intent.status == 'pending' %}
+        <div id="gatewayActions" style="margin-top:1.25rem;display:flex;flex-direction:column;gap:.6rem;">
+            <form method="post" action="{% url 'payment_gateway_decide' intent.external_id %}" id="gatewayPayForm">
+                {% csrf_token %}
+                <input type="hidden" name="decision" value="success">
+                <button type="submit" class="btn btn-primary w-full" style="height:3rem;{% if is_kaspi %}background:#E3262E;border-color:#E3262E;{% else %}background:#00A651;border-color:#00A651;{% endif %}" id="gatewayPaySubmit">
+                    Оплатить {{ intent.amount }} ₽
+                </button>
+            </form>
+            <form method="post" action="{% url 'payment_gateway_decide' intent.external_id %}">
+                {% csrf_token %}
+                <input type="hidden" name="decision" value="declined">
+                <button type="submit" class="btn btn-outline w-full" style="height:3rem;" id="gatewayDeclineBtn">
+                    Отменить оплату
+                </button>
+            </form>
+        </div>
+        {% elif intent.status == 'success' %}
+        <div class="panel p-4" style="margin-top:1.25rem;">
+            <p class="text-sm" style="margin:0;">Платёж уже проведён.
+                {% if booking.ticket %}<a href="{% url 'ticket_detail' booking.ticket.id %}">Открыть билет →</a>{% endif %}
+            </p>
+        </div>
+        {% else %}
+        <div class="panel p-4" style="margin-top:1.25rem;">
+            <p class="text-sm" style="margin:0;color:var(--accent-hover);">Платёж отклонён.</p>
+            <a href="{% url 'pay_booking' booking.id %}" class="btn btn-outline btn-sm" style="margin-top:.75rem;" id="gatewayRetryBtn">Попробовать снова</a>
+        </div>
+        {% endif %}
+
+        <p class="text-xs text-muted text-center" style="margin:1rem 0 0;">
+            Демо-режим: кнопки имитируют ответ {{ provider_label }}. В боевой интеграции
+            вместо них — редирект на сайт банка и подписанный webhook.
+        </p>
+    </div>
+</main>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    var form = document.getElementById('gatewayPayForm');
+    var submit = document.getElementById('gatewayPaySubmit');
+    if (!form) return;
+    form.addEventListener('submit', function () {
+        submit.disabled = true;
+        submit.textContent = 'Проводим оплату…';
+    });
+})();
+</script>
+{% endblock %}

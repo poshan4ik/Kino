@@ -46,19 +46,22 @@ class RegisterForm(UserCreationForm):
         widgets = {
             'username': forms.TextInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'username'
+                'placeholder': 'username',
+                'autocomplete': 'username',
             }),
         }
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['password1'].widget.attrs.update({
             'class': 'form-control',
-            'placeholder': 'Минимум 8 символов'
+            'placeholder': 'Минимум 8 символов',
+            'autocomplete': 'new-password',
         })
         self.fields['password2'].widget.attrs.update({
             'class': 'form-control',
-            'placeholder': 'Повторите пароль'
+            'placeholder': 'Повторите пароль',
+            'autocomplete': 'new-password',
         })
     
     def clean_email(self):
