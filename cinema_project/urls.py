@@ -1,7 +1,7 @@
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
 from django.conf import settings
-from django.conf.urls.static import static
+from django.views.static import serve as media_serve
 from django.contrib.auth import views as auth_views
 from django.views import defaults as django_defaults
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
@@ -62,6 +62,9 @@ urlpatterns = [
 handler404 = django_defaults.page_not_found
 handler500 = django_defaults.server_error
 
-urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# MEDIA_URL должен отдаваться и при DEBUG=False (static() в prod возвращает []).
+urlpatterns += [
+    re_path(r'^media/(?P<path>.*)$', media_serve, {'document_root': settings.MEDIA_ROOT}),
+]
 if settings.DEBUG:
-    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+    urlpatterns += [re_path(r'^static/(?P<path>.*)$', media_serve, {'document_root': settings.STATIC_ROOT})]
