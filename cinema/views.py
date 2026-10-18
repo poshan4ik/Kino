@@ -17,6 +17,7 @@ from django.http import JsonResponse
 import json
 import uuid
 from datetime import timedelta, date
+from pathlib import Path
 
 from .models import User, Genre, Movie, Hall, Seat, Session, Booking, Ticket, Payment, PaymentIntent, AuditLog, Favorite, Review, TicketType, log_audit
 from . import services
@@ -1901,9 +1902,21 @@ def health(request):
     except DatabaseError as exc:
         db_status = f'error: {exc.__class__.__name__}'
 
+    from django.conf import settings as dj_settings
+    from cinema.models import Movie
+
+    posters_dir = Path(dj_settings.MEDIA_ROOT) / 'posters'
+    posters_on_disk = sorted(p.name for p in posters_dir.glob('*.jpg')) if posters_dir.is_dir() else []
+
     payload = {
         'status': 'ok' if db_status == 'ok' else 'degraded',
         'database': db_status,
+        'debug': dj_settings.DEBUG,
+        'media_root': str(dj_settings.MEDIA_ROOT),
+        'posters_dir_exists': posters_dir.is_dir(),
+        'posters_on_disk': posters_on_disk,
+        'movies_with_poster': int(Movie.objects.exclude(poster='').count()),
+        'movies_total': int(Movie.objects.count()),
     }
     return JsonResponse(payload, status=200 if db_status == 'ok' else 503)
 
