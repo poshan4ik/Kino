@@ -1,6 +1,6 @@
-﻿services:
-  web:
-    type: web
+services:
+  - type: web
+    name: kino-aurora
     runtime: python
     plan: free
     buildCommand: bash build.sh
@@ -26,7 +26,7 @@
         sync: false
       - key: PYTHON_VERSION
         value: "3.12.7"
-  db:
-    type: postgres
+
+databases:
+  - name: aurora-db
     plan: free
-    name: aurora-db
