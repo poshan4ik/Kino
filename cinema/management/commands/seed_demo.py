@@ -227,9 +227,9 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS('Демо-данные готовы (идемпотентно).'))
 
     def seed_sessions(self):
-        """Сеансы на ближайшие 7 дней без пересечений, с разными ценами."""
+        """Сеансы на ближайшие 10 дней для ВСЕХ фильмов, без пересечений."""
         halls = list(Hall.objects.order_by('number'))
-        movies = list(Movie.objects.filter(status='active').order_by('id'))
+        movies = list(Movie.objects.order_by('id'))
         if not halls or not movies:
             return
 
@@ -245,7 +245,7 @@ class Command(BaseCommand):
             end = start + timedelta(minutes=s.get_duration_min() + buffer)
             occupied.setdefault(s.hall_id, []).append((start, end))
 
-        for day_offset in range(7):
+        for day_offset in range(10):
             day = today + timedelta(days=day_offset)
             # Выходные — дороже
             price_idx = 2 if day.weekday() >= 5 else (day_offset % 2)
