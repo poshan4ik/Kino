@@ -233,7 +233,7 @@ class Command(BaseCommand):
         if not halls or not movies:
             return
 
-        slots = [time(11, 0), time(14, 30), time(18, 30), time(22, 0)]
+        slots = [time(11, 0), time(13, 30), time(16, 0), time(18, 30), time(21, 0)]
         today = timezone.localdate()
         created_count = 0
         buffer = getattr(settings, 'SESSION_BUFFER_MINUTES', 20)
@@ -251,8 +251,8 @@ class Command(BaseCommand):
             price_idx = 2 if day.weekday() >= 5 else (day_offset % 2)
             p_std, p_comf, p_vip = DEMO_PRICES[price_idx]
             for idx, movie in enumerate(movies):
-                hall = halls[(idx + day_offset) % len(halls)]
-                slot = slots[(idx * 2 + day_offset) % len(slots)]
+                hall = halls[(idx // len(slots)) % len(halls)]
+                slot = slots[idx % len(slots)]
                 start = datetime.combine(day, slot)
                 end = start + timedelta(minutes=movie.duration + buffer)
 
