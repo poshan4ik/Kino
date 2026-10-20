@@ -1131,6 +1131,8 @@ class BookingView(LoginRequiredMixin, TemplateView):
     login_url = 'login'
     
     def get_context_data(self, **kwargs):
+        # Освобождаем места от истёкших неоплаченных броней до рендера схемы
+        services.expire_old_bookings()
         context = super().get_context_data(**kwargs)
         session = get_object_or_404(
             Session.objects.select_related('movie', 'hall', 'movie__genre').prefetch_related('hall__seats'),
@@ -1195,6 +1197,9 @@ class ProfileView(LoginRequiredMixin, TemplateView):
     login_url = 'login'
     
     def get_context_data(self, **kwargs):
+        # Прежде чем рисовать вкладку «Активные билеты», закрываем бронимы,
+        # у которых время удержания истекло (иначе они висят как «Ожидает оплаты»)
+        services.expire_old_bookings()
         context = super().get_context_data(**kwargs)
         user = self.request.user
         
