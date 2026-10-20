@@ -81,6 +81,8 @@ def process_webhook(provider: str, payload: dict, signature: str) -> dict:
     """Верифицирует подпись и идемпотентно обрабатывает результат платежа.
 
     Возвращает dict-ответ; исключения PaymentGatewayError несут HTTP-код.
+    Всё тело выполняется в atomic-транзакции: select_for_update()
+    в PostgreSQL работает только внутри транзакции.
     """
     if provider not in PROVIDERS:
         raise PaymentGatewayError('Неизвестный провайдер', 404)
@@ -94,68 +96,69 @@ def process_webhook(provider: str, payload: dict, signature: str) -> dict:
     external_id = payload.get('external_id')
     if not external_id:
         raise PaymentGatewayError('Нет external_id', 400)
-    try:
-        intent = PaymentIntent.objects.select_for_update().get(
-            external_id=uuid.UUID(str(external_id)), provider=provider,
-        )
-    except (ValueError, TypeError, PaymentIntent.DoesNotExist):
-        raise PaymentGatewayError('Неизвестное намерение оплаты', 404)
-
     status = payload.get('status')
     if status not in ('success', 'declined'):
         raise PaymentGatewayError('Недопустимый статус платежа', 400)
 
-    # Сверка суммы (payload.amount против суммы intent, с точностью до копеек)
-    try:
-        amount = Decimal(str(payload.get('amount')))
-    except (InvalidOperation, TypeError):
-        raise PaymentGatewayError('Некорректная сумма', 400)
-    if amount != intent.amount:
-        raise PaymentGatewayError('Сумма платежа не совпадает', 400)
-
-    # Идемпотентность: повторный webhook не меняет результат
-    if intent.status != PaymentIntent.STATUS_PENDING:
-        response = {
-            'status': intent.status,
-            'external_id': str(intent.external_id),
-            'detail': 'already_processed',
-        }
-        booking = intent.booking
-        if intent.status == PaymentIntent.STATUS_SUCCESS and hasattr(booking, 'ticket'):
-            response['ticket_id'] = booking.ticket.id
-        return response
-
-    intent.payload = payload
-    transaction_id = str(payload.get('transaction_id') or '')
-
-    if status == 'declined':
-        intent.status = PaymentIntent.STATUS_FAILED
-        intent.transaction_id = transaction_id
-        intent.processed_at = timezone.now()
-        intent.save(update_fields=['payload', 'status', 'transaction_id', 'processed_at'])
-        log_audit(intent.booking.client, 'payment_intent_failed',
-                  f'Платёж {intent.external_id} ({provider}) отклонён провайдером')
-        return {
-            'status': intent.status,
-            'external_id': str(intent.external_id),
-            'detail': 'declined',
-        }
-
-    # success → закрываем через штатный сервис (Ticket + Payment + booking paid)
     from django.db import transaction as db_transaction
-    try:
-        with db_transaction.atomic():
-            ticket = services.confirm_payment(
-                intent.booking, provider, intent.booking.client,
+    with db_transaction.atomic():
+        try:
+            intent = PaymentIntent.objects.select_for_update().get(
+                external_id=uuid.UUID(str(external_id)), provider=provider,
             )
-            intent.status = PaymentIntent.STATUS_SUCCESS
+        except (ValueError, TypeError, PaymentIntent.DoesNotExist):
+            raise PaymentGatewayError('Неизвестное намерение оплаты', 404)
+
+        # Сверка суммы (payload.amount против суммы intent, с точностью до копеек)
+        try:
+            amount = Decimal(str(payload.get('amount')))
+        except (InvalidOperation, TypeError):
+            raise PaymentGatewayError('Некорректная сумма', 400)
+        if amount != intent.amount:
+            raise PaymentGatewayError('Сумма платежа не совпадает', 400)
+
+        # Идемпотентность: повторный webhook не меняет результат
+        if intent.status != PaymentIntent.STATUS_PENDING:
+            response = {
+                'status': intent.status,
+                'external_id': str(intent.external_id),
+                'detail': 'already_processed',
+            }
+            booking = intent.booking
+            if intent.status == PaymentIntent.STATUS_SUCCESS and hasattr(booking, 'ticket'):
+                response['ticket_id'] = booking.ticket.id
+            return response
+
+        intent.payload = payload
+        transaction_id = str(payload.get('transaction_id') or '')
+
+        if status == 'declined':
+            intent.status = PaymentIntent.STATUS_FAILED
             intent.transaction_id = transaction_id
             intent.processed_at = timezone.now()
             intent.save(update_fields=['payload', 'status', 'transaction_id', 'processed_at'])
-            # Проставим transaction_id в созданном Payment
-            Payment.objects.filter(ticket=ticket).update(transaction_id=transaction_id)
-    except services.BookingError as exc:
-        raise PaymentGatewayError(exc.message, 409)
+            log_audit(intent.booking.client, 'payment_intent_failed',
+                      f'Платёж {intent.external_id} ({provider}) отклонён провайдером')
+            return {
+                'status': intent.status,
+                'external_id': str(intent.external_id),
+                'detail': 'declined',
+            }
+
+        # success → закрываем через штатный сервис (Ticket + Payment + booking paid)
+        try:
+            with db_transaction.atomic():
+                ticket = services.confirm_payment(
+                    intent.booking, provider, intent.booking.client,
+                )
+                intent.status = PaymentIntent.STATUS_SUCCESS
+                intent.transaction_id = transaction_id
+                intent.processed_at = timezone.now()
+                intent.save(update_fields=['payload', 'status', 'transaction_id', 'processed_at'])
+                # Проставим transaction_id в созданном Payment
+                Payment.objects.filter(ticket=ticket).update(transaction_id=transaction_id)
+        except services.BookingError as exc:
+            raise PaymentGatewayError(exc.message, 409)
 
     return {
         'status': intent.status,
