@@ -51,32 +51,43 @@
                 </span>
             </div>
 
-            <form method="post" action="{% url 'pay_booking' booking.id %}" id="payForm" style="margin-top:1.25rem;">
+            <form method="post" action="{% url 'pay_booking' booking.id %}" id="payForm" hidden>
                 {% csrf_token %}
                 <input type="hidden" name="method" value="online" id="payMethod">
                 <button type="submit" class="btn btn-primary w-full" style="height:3rem;" id="paySubmit">
                     Оплатить онлайн · {{ final_price }} ₽
                 </button>
             </form>
-            <div class="flex gap-2" style="margin-top:.75rem;" id="gatewayButtons">
+            {% if can_pay %}
+            <p class="eyebrow" style="margin-top:1.25rem;">Выберите способ оплаты</p>
+            <div class="flex flex-col gap-2" style="margin-top:.5rem;" id="gatewayButtons">
                 <form method="post" action="{% url 'pay_booking' booking.id %}" class="w-full">
                     {% csrf_token %}
                     <input type="hidden" name="method" value="kaspi">
-                    <button type="submit" class="btn btn-outline w-full" style="height:3rem;color:#E3262E;border-color:#E3262E;" id="kaspiBtn">
-                        Kaspi Gold
+                    <button type="submit" class="btn w-full" style="height:3.25rem;background:#E3262E;color:#fff;border-color:#E3262E;" id="kaspiBtn">
+                        Kaspi Gold · {{ final_price }} ₽
                     </button>
                 </form>
                 <form method="post" action="{% url 'pay_booking' booking.id %}" class="w-full">
                     {% csrf_token %}
                     <input type="hidden" name="method" value="halyk">
-                    <button type="submit" class="btn btn-outline w-full" style="height:3rem;color:#00A651;border-color:#00A651;" id="halykBtn">
-                        Халык Банк
+                    <button type="submit" class="btn w-full" style="height:3.25rem;background:#00A651;color:#fff;border-color:#00A651;" id="halykBtn">
+                        Халык Банк · {{ final_price }} ₽
+                    </button>
+                </form>
+                <form method="post" action="{% url 'pay_booking' booking.id %}" class="w-full">
+                    {% csrf_token %}
+                    <input type="hidden" name="method" value="online">
+                    <button type="submit" class="btn btn-outline w-full" style="height:3rem;" id="cardBtn">
+                        Карта (instant, без перехода в шлюз)
                     </button>
                 </form>
             </div>
-            <p class="text-xs text-muted text-center" style="margin:.7rem 0 0;">
-                Способ оплаты: карта онлайн, Kaspi или Халык. Билет с QR-кодом появится сразу после оплаты.
+            <p class="text-xs text-muted" style="margin:.7rem 0 0;">
+                Kaspi Gold / Халык — переход в демо-имитацию шлюза банка. Карта — мгновенная оплата без шлюза.
+                Билет с QR-кодом появится сразу после оплаты.
             </p>
+            {% endif %}
 
             <div id="holdExpired" hidden class="panel p-4" style="margin-top:1.25rem;border-color:var(--accent-hover);">
                 <p class="text-sm" style="margin:0;color:var(--accent-hover);">
