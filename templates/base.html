@@ -5,18 +5,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#0d0e12">
-    <meta name="description" content="{% block meta_description %}РљРёРЅРѕС‚РµР°С‚СЂ В«РђРІСЂРѕСЂР°В» РІ РўР°СЂР°Р·Рµ вЂ” Р°С„РёС€Р° С„РёР»СЊРјРѕРІ, РѕРЅР»Р°Р№РЅ-РІС‹Р±РѕСЂ РјРµСЃС‚ Рё СЌР»РµРєС‚СЂРѕРЅРЅС‹Рµ Р±РёР»РµС‚С‹ СЃ QR-РєРѕРґРѕРј.{% endblock %}">
+    <meta name="description" content="{% block meta_description %}Кинотеатр «Аврора» в Таразе — афиша фильмов, онлайн-выбор мест и электронные билеты с QR-кодом.{% endblock %}">
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230d0e12'/%3E%3Cpath d='M25 19l23 13-23 13z' fill='%23e53950'/%3E%3Ccircle cx='32' cy='32' r='26' fill='none' stroke='rgba(255,255,255,.14)' stroke-width='2'/%3E%3C/svg%3E">
     <meta property="og:type" content="website">
-    <meta property="og:site_name" content="РљРёРЅРѕС‚РµР°С‚СЂ В«РђРІСЂРѕСЂР°В»">
-    <meta property="og:title" content="{% block og_title %}РђРІСЂРѕСЂР° вЂ” РєРёРЅРѕС‚РµР°С‚СЂ РІ РўР°СЂР°Р·Рµ{% endblock %}">
-    <meta property="og:description" content="{% block og_description %}РђС„РёС€Р°, РІС‹Р±РѕСЂ РјРµСЃС‚ Рё Р±РёР»РµС‚С‹ РѕРЅР»Р°Р№РЅ. РљРёРЅРѕ РЅР°С‡РёРЅР°РµС‚СЃСЏ Р·РґРµСЃСЊ.{% endblock %}">
+    <meta property="og:site_name" content="Кинотеатр «Аврора»">
+    <meta property="og:title" content="{% block og_title %}Аврора — кинотеатр в Таразе{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}Афиша, выбор мест и билеты онлайн. Кино начинается здесь.{% endblock %}">
     {% block og_image %}{% endblock %}
-    <title>{% block title %}РђРІСЂРѕСЂР° вЂ” РєРёРЅРѕС‚РµР°С‚СЂ{% endblock %}</title>
+    <title>{% block title %}Аврора — кинотеатр{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'css/main.css' %}?v=3">
+    <link rel="stylesheet" href="{% static 'css/main.css' %}?v=4">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -24,26 +24,26 @@
 <!-- HEADER -->
 <header class="site-header">
     <div class="page-shell" style="display:flex;height:var(--header-h);align-items:center;justify-content:space-between;gap:1rem;">
-        <a href="{% url 'home' %}" class="brand" aria-label="РђРІСЂРѕСЂР° вЂ” РЅР° РіР»Р°РІРЅСѓСЋ">
+        <a href="{% url 'home' %}" class="brand" aria-label="Аврора — на главную">
             <span class="brand-mark"><span></span></span>
-            <span class="brand-text">РђР’Р РћР Рђ</span>
+            <span class="brand-text">АВРОРА</span>
         </a>
 
-        <nav class="nav-desktop lg-hidden" aria-label="РћСЃРЅРѕРІРЅР°СЏ РЅР°РІРёРіР°С†РёСЏ">
-            <a href="{% url 'home' %}#afilms" class="nav-link {% if request.resolver_match.url_name == 'home' %}nav-link-active{% endif %}">РђС„РёС€Р°</a>
-            <a href="{% url 'home' %}#skoro" class="nav-link">РЎРєРѕСЂРѕ</a>
-            <a href="{% url 'home' %}#theater" class="nav-link">РљРёРЅРѕС‚РµР°С‚СЂ</a>
+        <nav class="nav-desktop lg-hidden" aria-label="Основная навигация">
+            <a href="{% url 'home' %}#afilms" class="nav-link {% if request.resolver_match.url_name == 'home' %}nav-link-active{% endif %}">Афиша</a>
+            <a href="{% url 'home' %}#skoro" class="nav-link">Скоро</a>
+            <a href="{% url 'home' %}#theater" class="nav-link">Кинотеатр</a>
             {% if user.is_authenticated %}
-                <a href="{% url 'profile' %}" class="nav-link {% if request.resolver_match.url_name == 'profile' %}nav-link-active{% endif %}">РњРѕРё Р±РёР»РµС‚С‹</a>
+                <a href="{% url 'profile' %}" class="nav-link {% if request.resolver_match.url_name == 'profile' %}nav-link-active{% endif %}">Мои билеты</a>
             {% endif %}
             {% if user.is_authenticated and user.role in 'cashier,manager,admin' %}
-                <a href="{% url 'cashier' %}" class="nav-link {% if request.resolver_match.url_name == 'cashier' %}nav-link-active{% endif %}">РљР°СЃСЃР°</a>
+                <a href="{% url 'cashier' %}" class="nav-link {% if request.resolver_match.url_name == 'cashier' %}nav-link-active{% endif %}">Касса</a>
             {% endif %}
             {% if user.is_authenticated and user.role in 'controller,manager,admin' %}
-                <a href="{% url 'controller' %}" class="nav-link {% if request.resolver_match.url_name == 'controller' %}nav-link-active{% endif %}">РљРѕРЅС‚СЂРѕР»СЊ</a>
+                <a href="{% url 'controller' %}" class="nav-link {% if request.resolver_match.url_name == 'controller' %}nav-link-active{% endif %}">Контроль</a>
             {% endif %}
             {% if user.is_authenticated and user.role in 'manager,admin' %}
-                <a href="{% url 'manager' %}" class="nav-link {% if request.resolver_match.url_name == 'manager' or staff_section %}nav-link-active{% endif %}">РЈРїСЂР°РІР»РµРЅРёРµ</a>
+                <a href="{% url 'manager' %}" class="nav-link {% if request.resolver_match.url_name == 'manager' or staff_section %}nav-link-active{% endif %}">Управление</a>
             {% endif %}
         </nav>
 
@@ -56,88 +56,88 @@
                 </a>
                 <form method="post" action="{% url 'logout' %}" class="lg-hidden">
                     {% csrf_token %}
-                    <button type="submit" class="btn btn-outline btn-sm">Р’С‹Р№С‚Рё</button>
+                    <button type="submit" class="btn btn-outline btn-sm">Выйти</button>
                 </form>
             {% else %}
-                <a href="{% url 'login' %}" class="btn btn-primary btn-sm">Р’РѕР№С‚Рё</a>
-                <a href="{% url 'register' %}" class="btn btn-outline btn-sm lg-hidden">Р РµРіРёСЃС‚СЂР°С†РёСЏ</a>
+                <a href="{% url 'login' %}" class="btn btn-primary btn-sm">Войти</a>
+                <a href="{% url 'register' %}" class="btn btn-outline btn-sm lg-hidden">Регистрация</a>
             {% endif %}
-            <button type="button" class="btn-burger lg-only" id="burgerBtn" aria-label="РћС‚РєСЂС‹С‚СЊ РјРµРЅСЋ" aria-expanded="false">
+            <button type="button" class="btn-burger lg-only" id="burgerBtn" aria-label="Открыть меню" aria-expanded="false">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
             </button>
         </div>
     </div>
 
     <!-- Mobile nav -->
-    <nav class="mobile-nav page-shell" id="mobileNav" aria-label="РњРѕР±РёР»СЊРЅР°СЏ РЅР°РІРёРіР°С†РёСЏ">
-        <a href="{% url 'home' %}#afilms" class="mobile-nav-link">РђС„РёС€Р° <span>в†’</span></a>
-        <a href="{% url 'home' %}#skoro" class="mobile-nav-link">РЎРєРѕСЂРѕ <span>в†’</span></a>
-        <a href="{% url 'home' %}#theater" class="mobile-nav-link">РљРёРЅРѕС‚РµР°С‚СЂ <span>в†’</span></a>
+    <nav class="mobile-nav page-shell" id="mobileNav" aria-label="Мобильная навигация">
+        <a href="{% url 'home' %}#afilms" class="mobile-nav-link">Афиша <span>→</span></a>
+        <a href="{% url 'home' %}#skoro" class="mobile-nav-link">Скоро <span>→</span></a>
+        <a href="{% url 'home' %}#theater" class="mobile-nav-link">Кинотеатр <span>→</span></a>
         {% if user.is_authenticated %}
-        <a href="{% url 'profile' %}" class="mobile-nav-link">РњРѕРё Р±РёР»РµС‚С‹ <span>в†’</span></a>
+        <a href="{% url 'profile' %}" class="mobile-nav-link">Мои билеты <span>→</span></a>
         <div class="nav-sep"></div>
         {% if user.role in 'cashier,manager,admin' %}
-        <a href="{% url 'cashier' %}" class="mobile-nav-link">РљР°СЃСЃР° <span>в†’</span></a>
+        <a href="{% url 'cashier' %}" class="mobile-nav-link">Касса <span>→</span></a>
         {% endif %}
         {% if user.role in 'controller,manager,admin' %}
-        <a href="{% url 'controller' %}" class="mobile-nav-link">РљРѕРЅС‚СЂРѕР»СЊ <span>в†’</span></a>
+        <a href="{% url 'controller' %}" class="mobile-nav-link">Контроль <span>→</span></a>
         {% endif %}
         {% if user.role in 'manager,admin' %}
-        <a href="{% url 'manager' %}" class="mobile-nav-link">РЈРїСЂР°РІР»РµРЅРёРµ <span>в†’</span></a>
+        <a href="{% url 'manager' %}" class="mobile-nav-link">Управление <span>→</span></a>
         {% endif %}
         <div class="nav-sep"></div>
         <form method="post" action="{% url 'logout' %}">
             {% csrf_token %}
-            <button type="submit" class="mobile-nav-link" style="background:none;border:none;width:100%;cursor:pointer;">Р’С‹Р№С‚Рё <span>в†’</span></button>
+            <button type="submit" class="mobile-nav-link" style="background:none;border:none;width:100%;cursor:pointer;">Выйти <span>→</span></button>
         </form>
         {% else %}
         <div class="nav-sep"></div>
-        <a href="{% url 'login' %}" class="mobile-nav-link">Р’РѕР№С‚Рё <span>в†’</span></a>
-        <a href="{% url 'register' %}" class="mobile-nav-link">Р РµРіРёСЃС‚СЂР°С†РёСЏ <span>в†’</span></a>
+        <a href="{% url 'login' %}" class="mobile-nav-link">Войти <span>→</span></a>
+        <a href="{% url 'register' %}" class="mobile-nav-link">Регистрация <span>→</span></a>
         {% endif %}
     </nav>
 </header>
 
 <!-- BOTTOM NAV (mobile) -->
-<nav class="bottom-nav" aria-label="РњРѕР±РёР»СЊРЅР°СЏ РЅР°РІРёРіР°С†РёСЏ">
+<nav class="bottom-nav" aria-label="Мобильная навигация">
     <a href="{% url 'home' %}#afilms" class="bn-item {% if request.resolver_match.url_name == 'home' %}active{% endif %}">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="2" width="20" height="20" rx="3"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
-        <span>РђС„РёС€Р°</span>
+        <span>Афиша</span>
     </a>
     <a href="{% url 'home' %}#skoro" class="bn-item">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
-        <span>РЎРєРѕСЂРѕ</span>
+        <span>Скоро</span>
     </a>
     {% if user.is_authenticated %}
     <a href="{% url 'profile' %}" class="bn-item {% if request.resolver_match.url_name == 'profile' %}active{% endif %}">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z"/><line x1="13" y1="7" x2="13" y2="17"/></svg>
-        <span>Р‘РёР»РµС‚С‹</span>
+        <span>Билеты</span>
     </a>
     {% if user.role == 'controller' %}
     <a href="{% url 'controller' %}" class="bn-item {% if staff_section == 'controller' %}active{% endif %}">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
-        <span>РљРѕРЅС‚СЂРѕР»СЊ</span>
+        <span>Контроль</span>
     </a>
     {% elif user.role == 'cashier' %}
     <a href="{% url 'cashier' %}" class="bn-item {% if staff_section == 'cashier' %}active{% endif %}">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>
-        <span>РљР°СЃСЃР°</span>
+        <span>Касса</span>
     </a>
     {% elif user.role == 'manager' or user.role == 'admin' %}
     <a href="{% url 'manager' %}" class="bn-item {% if staff_section %}active{% endif %}">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21h18"/><path d="M5 21V8l7-5 7 5v13"/><path d="M10 21v-5h4v5"/></svg>
-        <span>РЈРїСЂР°РІР»РµРЅРёРµ</span>
+        <span>Управление</span>
     </a>
     {% endif %}
     {% else %}
     <a href="{% url 'login' %}" class="bn-item">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-        <span>Р’С…РѕРґ</span>
+        <span>Вход</span>
     </a>
     {% endif %}
 </nav>
 
-<!-- SERVER MESSAGES в†’ TOASTS -->
+<!-- SERVER MESSAGES → TOASTS -->
 {% if messages %}
 <div hidden>
     {% for message in messages %}
@@ -155,40 +155,40 @@
     <div class="page-shell footer-grid">
         <div class="footer-cols">
             <div class="footer-col" style="min-width:12rem;">
-                <span class="brand-text" style="font-size:1.4rem;">РђР’Р РћР Рђ</span>
-                <span>РљРёРЅРѕ РЅР°С‡РёРЅР°РµС‚СЃСЏ Р·РґРµСЃСЊ.</span>
+                <span class="brand-text" style="font-size:1.4rem;">АВРОРА</span>
+                <span>Кино начинается здесь.</span>
             </div>
             <div class="footer-col">
-                <b>РљРёРЅРѕС‚РµР°С‚СЂ</b>
-                <a href="{% url 'home' %}#afilms">РђС„РёС€Р°</a>
-                <a href="{% url 'home' %}#skoro">РЎРєРѕСЂРѕ РІ РїСЂРѕРєР°С‚Рµ</a>
-                <a href="{% url 'home' %}#theater">Рћ РєРёРЅРѕС‚РµР°С‚СЂРµ</a>
+                <b>Кинотеатр</b>
+                <a href="{% url 'home' %}#afilms">Афиша</a>
+                <a href="{% url 'home' %}#skoro">Скоро в прокате</a>
+                <a href="{% url 'home' %}#theater">О кинотеатре</a>
             </div>
             <div class="footer-col">
-                <b>Р—СЂРёС‚РµР»СЏРј</b>
-                <a href="{% url 'profile' %}">РњРѕРё Р±РёР»РµС‚С‹</a>
+                <b>Зрителям</b>
+                <a href="{% url 'profile' %}">Мои билеты</a>
                 {% if user.is_authenticated %}
-                <a href="{% url 'profile' %}">Р›РёС‡РЅС‹Р№ РєР°Р±РёРЅРµС‚</a>
+                <a href="{% url 'profile' %}">Личный кабинет</a>
                 {% else %}
-                <a href="{% url 'login' %}">Р’С…РѕРґ</a>
-                <a href="{% url 'register' %}">Р РµРіРёСЃС‚СЂР°С†РёСЏ</a>
+                <a href="{% url 'login' %}">Вход</a>
+                <a href="{% url 'register' %}">Регистрация</a>
                 {% endif %}
             </div>
             <div class="footer-col">
-                <b>РљРѕРЅС‚Р°РєС‚С‹</b>
-                <span>РўР°СЂР°Р·, СѓР». РђР±Р°СЏ, 52</span>
+                <b>Контакты</b>
+                <span>Тараз, ул. Абая, 52</span>
                 <span>+7 343 000-00-00</span>
-                <span>Р•Р¶РµРґРЅРµРІРЅРѕ 10:00 вЂ” 00:00</span>
+                <span>Ежедневно 10:00 — 00:00</span>
             </div>
         </div>
         <div class="border-t" style="padding-top:1.25rem;display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
-            <span>В© 2026 РљРёРЅРѕС‚РµР°С‚СЂ В«РђРІСЂРѕСЂР°В»</span>
-            <span>РђРРЎ В«РђРІСЂРѕСЂР°В» В· РІРµСЂСЃРёСЏ 2.0</span>
+            <span>© 2026 Кинотеатр «Аврора»</span>
+            <span>АИС «Аврора» · версия 2.0</span>
         </div>
     </div>
 </footer>
 
-<script src="{% static 'js/main.js' %}?v=3"></script>
+<script src="{% static 'js/main.js' %}?v=4"></script>
 {% if staff_shell %}<script src="{% static 'js/staff.js' %}"></script>{% endif %}
 {% block extra_js %}{% endblock %}
 </body>
