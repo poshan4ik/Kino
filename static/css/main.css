@@ -1345,6 +1345,7 @@ textarea.form-control { height: auto; min-height: 88px; padding: 0.75rem 1rem; r
   justify-content: center;
   gap: 0.5rem;
 }
+.chip-dot { width: 9px; height: 9px; border-radius: 2px; display: inline-block; flex: 0 0 auto; }
 .method-chip:hover { border-color: var(--border-strong); color: var(--text); }
 .method-chip.active {
   border-color: var(--accent);
@@ -1545,14 +1546,14 @@ textarea.form-control { height: auto; min-height: 88px; padding: 0.75rem 1rem; r
 .ticket-qr img, .ticket-qr canvas { display: block; width: 88px !important; height: 88px !important; }
 .ticket-qr-img { display: block; width: 220px; height: 220px; border-radius: 10px; background: var(--white); }
 
-.ticket-seats { display: flex; gap: 1.5rem; margin-top: 1.1rem; font-size: 0.85rem; }
+.ticket-seats { display: flex; flex-wrap: wrap; gap: 1.5rem; margin-top: 1.1rem; font-size: 0.85rem; }
 .ticket-seats b { display: block; color: var(--muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
 
 @media (min-width: 640px) {
-  .ticket-stub { grid-template-columns: 1fr 230px; }
+  .ticket-stub { grid-template-columns: minmax(0, 1fr) 230px; }
   .ticket-code { border-top: 0; border-left: 1px dashed var(--border-strong); }
   /* полная страница билета: колонка с QR шире, чтобы 220px картинка не обрезалась */
-  .ticket-stub.ticket-full { grid-template-columns: 1fr 300px; }
+  .ticket-stub.ticket-full { grid-template-columns: minmax(0, 1fr) 300px; }
   .ticket-stub.ticket-full .ticket-code { min-width: 0; }
   .ticket-stub.ticket-full::after { right: 300px; }
 }

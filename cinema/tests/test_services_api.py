@@ -51,8 +51,10 @@ class ModelConstraintTests(CinemaFixture):
             movie=self.movie, hall=self.hall,
             date=date.today() + timedelta(days=2), time=time(10, 0),
         )
-        next_start = (datetime.combine(s1.date, s1.time)
-                      + timedelta(minutes=s1.get_duration_min() + 20)).time()
+        next_start = (
+            datetime.combine(s1.date, s1.time)
+            + timedelta(minutes=s1.get_duration_min() + 20)
+        ).time()
         s2 = Session(
             movie=self.movie, hall=self.hall,
             date=s1.date, time=next_start,
@@ -60,6 +62,34 @@ class ModelConstraintTests(CinemaFixture):
         s2.clean()  # не должно бросать
         s2.save()
         self.assertIsNotNone(s2.pk)
+
+    def test_night_session_overlap_across_dates_rejected(self):
+        # Ночной сеанс 23:50 (конец за полночь) пересекается с утренним (+1 день)
+        today = date.today()
+        night = Session.objects.create(
+            movie=self.movie, hall=self.hall,
+            date=today, time=time(23, 50),
+        )
+        with self.assertRaises(ValidationError):
+            Session.objects.create(
+                movie=self.movie, hall=self.hall,
+                date=today + timedelta(days=1), time=time(0, 10),
+            )
+        # Обратно: сначала утренний, потом ночной
+        morning = Session.objects.create(
+            movie=self.movie, hall=self.hall,
+            date=today + timedelta(days=3), time=time(0, 10),
+        )
+        with self.assertRaises(ValidationError):
+            Session.objects.create(
+                movie=self.movie, hall=self.hall,
+                date=today + timedelta(days=2), time=time(23, 50),
+            )
+        self.assertTrue(
+            Session.objects.filter(
+                pk__in=[night.pk, morning.pk]
+            ).count() == 2
+        )
 
     def test_invalid_status_transition_raises(self):
         booking = self.make_booking(status=BookingStatus.PAID)

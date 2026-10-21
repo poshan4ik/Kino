@@ -73,7 +73,7 @@ erDiagram
         int session_id FK
         int seat_id FK
         string status "created|pending_payment|paid|used|cancelled|expired"
-        datetime expires_at "холд ~15 мин"
+        datetime expires_at "холд ~14 мин"
     }
     Ticket {
         int id PK
@@ -118,7 +118,7 @@ erDiagram
 | Один отзыв на пользователя на фильм — `UniqueConstraint(user, movie)` | `Review.Meta` |
 | OneToOne: бронь → билет | `Ticket.booking` |
 | `Session.clean`: пересечение сеансов в зале запрещено (конец одного ≤ начала следующего), буфер `SESSION_BUFFER_MINUTES` (по умолчанию 20 мин) | `Session.clean` |
-| Холд мест: `BOOKING_MAX_SEATS=10` за раз, `BOOKING_HOLD_MINUTES=15`, «всё или ничего» атомарно (`select_for_update`) | `cinema/services.py` |
+| Холд мест: `BOOKING_MAX_SEATS=10` за раз, `BOOKING_HOLD_MINUTES=14`, «всё или ничего» атомарно (`select_for_update`) | `cinema/services.py` |
 
 ## Статусная машина брони
 

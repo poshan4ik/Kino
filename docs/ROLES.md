@@ -31,4 +31,4 @@
 - `role` и `is_active` **read-only** в `UserSerializer` — повысить роль через `/api/users/update_me/` или анонимный `POST /api/users/` нельзя (регресс-тесты `SecurityRegressionTests`).
 - Смена ролей — только через CRUD `/api/users/<id>/` (менеджер/админ) или Django admin.
 - Возврат/отмена оплаченного — `IsCashierRole` (кассир/менеджер/админ, **без** контролёра).
-- Лимиты едины в настройках: `BOOKING_MAX_SEATS=10`, `BOOKING_HOLD_MINUTES=15`, `SESSION_BUFFER_MINUTES=20` (env-переменные).
+- Лимиты едины в настройках: `BOOKING_MAX_SEATS=10`, `BOOKING_HOLD_MINUTES=14`, `SESSION_BUFFER_MINUTES=20` (env-переменные).

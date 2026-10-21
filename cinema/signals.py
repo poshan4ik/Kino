@@ -9,7 +9,10 @@ def booking_pre_save(sender, instance, **kwargs):
     """Автоустановка expires_at при создании брони"""
     if not instance.pk and not instance.expires_at:
         from datetime import timedelta
-        instance.expires_at = timezone.now() + timedelta(minutes=15)
+        from django.conf import settings
+        instance.expires_at = timezone.now() + timedelta(
+            minutes=settings.BOOKING_HOLD_MINUTES
+        )
 
 
 @receiver(post_save, sender=Payment)

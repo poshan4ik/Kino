@@ -257,7 +257,8 @@
     container.appendChild(legend);
   }
 
-    var MAX_SEATS = 10;
+    var MAX_SEATS = (window.AuroraSettings && window.AuroraSettings.MAX_SEATS) || 10;
+    var HOLD_MINUTES = (window.AuroraSettings && window.AuroraSettings.HOLD_MINUTES) || 14;
 
   /* ── Booking drawer flow ─────────────────────────────── */
   var booking = {
@@ -397,8 +398,8 @@
 
     foot.innerHTML =
       '<div class="summary-box" id="bkSummary"></div>' +
-      '<button class="btn btn-primary w-full" id="bkContinue" style="margin-top:.85rem" disabled>Забронировать · <span id="bkSum"></span></button>' +
-      '<p class="text-xs text-muted text-center" style="margin:.6rem 0 0">Места удерживаются 15 минут после бронирования</p>';
+      '<button class="btn btn-primary w-full" id="bkContinue" style="margin-top:.85rem" disabled>Оплатить · <span id="bkSum"></span></button>' +
+      '<p class="text-xs text-muted text-center" style="margin:.6rem 0 0">Оплата сразу: Kaspi Gold, Халык Банк, карта · места держатся ' + HOLD_MINUTES + ' минут</p>';
 
     renderSummaryInto(document.getElementById('bkSummary'));
     document.getElementById('bkSum').textContent = formatPrice(selectedTotal());
@@ -411,7 +412,7 @@
   async function holdSeats() {
     var btn = document.getElementById('bkContinue');
     btn.disabled = true;
-    btn.textContent = 'Бронируем…';
+    btn.textContent = 'Оформляем…';
     try {
       var seatIds = Array.from(booking.selected.keys());
       var data = await api('POST', '/api/bookings/hold/', {
@@ -434,11 +435,20 @@
   function paymentMethods() {
     var opts = booking.opts || {};
     if (opts.methods && opts.methods.length) return opts.methods;
-    return ['online', 'card'];
+    return ['kaspi', 'halyk', 'online'];
   }
 
   function methodName(m) {
-    return { online: 'Карта онлайн', card: 'Карта', cash: 'Наличные' }[m] || m;
+    return {
+      kaspi: 'Kaspi Gold', halyk: 'Халык Банк',
+      online: 'Карта онлайн', card: 'Карта', cash: 'Наличные',
+    }[m] || m;
+  }
+
+  function methodDot(m) {
+    if (m === 'kaspi') return '<span class="chip-dot" style="background:#E3262E"></span>';
+    if (m === 'halyk') return '<span class="chip-dot" style="background:#00A651"></span>';
+    return '';
   }
 
   function methodIcon(m) {
@@ -465,14 +475,15 @@
         '<div class="payment-methods" id="payMethods">' +
           methods.map(function (m, i) {
             return '<button type="button" class="method-chip' + (i === 0 ? ' active' : '') +
-              '" data-method="' + m + '">' + methodIcon(m) + methodName(m) + '</button>';
+              '" data-method="' + m + '">' + methodDot(m) + methodIcon(m) + methodName(m) + '</button>';
           }).join('') +
         '</div>' +
       '</div>' +
       '<div class="panel p-4" style="margin-top:1.1rem;display:flex;align-items:center;justify-content:space-between;gap:.75rem">' +
-        '<span class="text-sm text-muted">Время брони</span>' +
+        '<span class="text-sm text-muted">Место держится</span>' +
         '<span class="countdown" id="payCd"><span class="cd-dot"></span><span id="payCdText">15:00</span></span>' +
-      '</div>';
+      '</div>' +
+      '<p class="text-xs text-muted" style="margin-top:.8rem">Kaspi Gold и Халык Банк — переход в демо-шлюз банка. Карта — мгновенная оплата.</p>';
 
     foot.innerHTML =
       '<button class="btn btn-primary w-full" id="payBtn">Оплатить ' + formatPrice(selectedTotal()) + '</button>' +
@@ -537,12 +548,16 @@
     btn.disabled = true;
     btn.textContent = 'Проводим оплату…';
     try {
-      var tickets = await api('POST', '/api/bookings/pay/', {
+      var data = await api('POST', '/api/bookings/pay/', {
         booking_ids: booking.bookings.map(function (b) { return b.id; }),
         method: booking.method,
       });
       if (booking.timer) { clearInterval(booking.timer); booking.timer = null; }
-      renderSuccessStep(tickets);
+      if (data.redirect) {
+        window.location.href = data.redirect;
+        return;
+      }
+      renderSuccessStep(data);
     } catch (e) {
       toast(e.message, 'error');
       btn.disabled = false;
@@ -568,7 +583,7 @@
         '<div class="success-ring">' +
           '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="20 6 9 17 4 12"/></svg>' +
         '</div>' +
-        '<h2 style="font-family:\'Bebas Neue\',sans-serif;font-size:2rem;margin:0;color:var(--text)">Бронь подтверждена</h2>' +
+        '<h2 style="font-family:\'Bebas Neue\',sans-serif;font-size:2rem;margin:0;color:var(--text)">Оплата прошла</h2>' +
         '<p class="text-sm text-muted" style="margin:.5rem 0 0">' + esc(booking.session.movie_title) + ' · ' + esc(sessionSub()) + '</p>' +
         '<div class="booking-number">' + esc(number) + '</div>' +
         '<div class="summary-box" style="margin-top:1.25rem;text-align:left">' + ticketHtml +
@@ -872,5 +887,6 @@
     guard: guard,
     cssVar: cssVar,
     MAX_SEATS: MAX_SEATS,
+    HOLD_MINUTES: HOLD_MINUTES,
   };
 })();

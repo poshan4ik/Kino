@@ -60,10 +60,11 @@
                                     data-confirm="Оплатить бронь #{{ b.id }} наличными?"
                                     data-success="Оплата проведена">Оплатить</button>
                             {% endif %}
-                            {% if b.status == 'created' or b.status == 'pending_payment' or b.status == 'expired' %}
+                            {% if b.status == 'created' or b.status == 'pending_payment' %}
                             <button type="button" class="btn btn-outline"
-                                    data-api-delete data-url="/api/bookings/{{ b.id }}/"
-                                    data-confirm="Отменить бронь #{{ b.id }}? Место снова станет свободным.">Отменить</button>
+                                    data-api-action data-url="/api/bookings/{{ b.id }}/cancel/"
+                                    data-confirm="Отменить бронь #{{ b.id }}? Место снова станет свободным."
+                                    data-success="Бронь отменена">Отменить</button>
                             {% endif %}
                         </div>
                     </td>

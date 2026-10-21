@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db.models import Avg
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_field
@@ -383,10 +384,12 @@ class HoldRequestSerializer(serializers.Serializer):
 class PayRequestSerializer(serializers.Serializer):
     """Тело POST /api/bookings/pay/."""
     booking_ids = serializers.ListField(
-        child=serializers.IntegerField(), min_length=1, max_length=6,
+        child=serializers.IntegerField(),
+        min_length=1,
+        max_length=getattr(settings, 'BOOKING_MAX_SEATS', 10),
     )
     method = serializers.ChoiceField(
-        choices=['cash', 'card', 'online'], default='online',
+        choices=Payment.METHOD_CHOICES, default='online',
     )
 
 

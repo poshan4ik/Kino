@@ -70,12 +70,19 @@ User 1──∞ AuditLog
 `save()` заполняет `duration_min` из фильма, если не задан.
 
 ### Booking
-`client` (FK→User), `session` (FK), `seat` (FK),
-`status` (**BookingStatus** TextChoices), `created_at`, `expires_at`.
+`client` (FK→User), `session` (FK), `seat` (FK), `ticket_type` (FK→TicketType,
+PROTECT, nullable), `status` (**BookingStatus** TextChoices), `created_at`,
+`expires_at`.
 Ограничения БД: `unique(session, seat)` для активных статусов
 (created/pending_payment/paid/used).
 Индексы: `(status, created_at)`, `(expires_at)`.
 Методы: `is_expired()`, `expire()` (pending→expired через `set_status`).
+
+### TicketType
+`code` (unique), `name`, `discount_percent` (0–100), `is_active`.
+Типы скидок (взрослый/детский/студенческий) настраиваются в админке;
+скидка применяется серверно в `services.calculate_ticket_price`
+(базовая цена категории × (100 − скидка)/100, ROUND_HALF_UP).
 
 ### Ticket
 `booking` (OneToOne), `price` (DecimalField, фиксируется на момент
@@ -85,9 +92,17 @@ User 1──∞ AuditLog
 Метод: `mark_used()` — `active→used` (+ бронь `paid→used`).
 
 ### Payment
-`ticket` (FK), `amount` (DecimalField, ≥0), `method` (cash/card/online),
+`ticket` (FK), `amount` (DecimalField, ≥0), `method`
+(cash/card/online/kaspi/halyk),
 `status` (**PaymentStatus**), `transaction_id`, `created_at`, `completed_at`.
 Индекс: `(status, created_at)`.
+
+### PaymentIntent
+Намерение онлайн-оплаты Kaspi/Халык до подтверждения webhook'ом.
+`booking` (FK), `provider` (kaspi/halyk), `external_id` (UUID, unique),
+`amount`, `status` (pending/success/failed), `transaction_id`,
+`payload` (JSON), `created_at`, `processed_at`.
+Обрабатывается в `cinema/payments.py` (HMAC-SHA256-подпись webhook).
 
 ### AuditLog
 `user` (FK, SET_NULL, nullable), `action`, `details`, `created_at`.

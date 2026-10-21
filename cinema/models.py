@@ -325,9 +325,15 @@ class Session(models.Model):
             session_start = datetime.combine(self.date, self.time)
             session_end = session_start + timedelta(minutes=duration + buffer)
 
+            # Охватываем ±1 сутки: ночной сеанс (напр. 23:50) может
+            # пересечься с сеансом соседней даты, который filter(date=...)
+            # не увидел бы
             overlapping = Session.objects.filter(
                 hall=self.hall,
-                date=self.date,
+                date__range=[
+                    self.date - timedelta(days=1),
+                    self.date + timedelta(days=1),
+                ],
                 is_active=True
             ).exclude(pk=self.pk)
 

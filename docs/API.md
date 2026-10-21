@@ -2,7 +2,8 @@
 
 Swagger: `/api/docs/` · Схема OpenAPI: `/api/schema/` · Health: `/health/`
 
-Аутентификация: сессионная (cookies) или `Authorization: Bearer` (JWT не настроен — используется сессионная; DRF-проверка `IsAuthenticated`).
+Аутентификация: сессионная (cookies) или токен (`Authorization: Token <key>`,
+выдаётся `POST /api/auth/token/`).
 
 Троттлинги: аноним 60/мин, пользователь 120/мин, логин 10/5мин, регистрация 5/10мин.
 
@@ -25,7 +26,7 @@ Swagger: `/api/docs/` · Схема OpenAPI: `/api/schema/` · Health: `/health/
 | GET | `/api/bookings/` | авторизован | свои брони (персонал — все) |
 | POST | `/api/bookings/` | авторизован | создать бронь (устаревшее — используйте hold) |
 | POST | `/api/bookings/hold/` | авторизован | атомарный холд мест: `{session, seats:[id]}` → 201/400/404 |
-| POST | `/api/bookings/pay/` | авторизован | оплата: `{booking_ids:[…], method}` → билеты 201 |
+| POST | `/api/bookings/pay/` | авторизован | оплата: `{booking_ids:[…], method}`; `card`/`online` — мгновенно → билеты 201, `kaspi`/`halyk` — создаёт PaymentIntent и возвращает `redirect` в демо-шлюз |
 | POST | `/api/bookings/{id}/confirm_payment/` | кассир+ | кассовое подтверждение оплаты |
 | POST | `/api/bookings/{id}/cancel/` | кассир+ | отмена брони (персонал) |
 | POST | `/api/bookings/{id}/cancel_own/` | владелец | отмена своей брони до сеанса |
@@ -35,11 +36,13 @@ Swagger: `/api/docs/` · Схема OpenAPI: `/api/schema/` · Health: `/health/
 | POST | `/api/tickets/{barcode}/validate_ticket/` | контролёр+ | разовая проверка/вход |
 | POST | `/api/tickets/check_by_barcode/` | контролёр+ | поиск и погашение по штрихкоду |
 | GET | `/api/payments/` | авторизован | свои платежи |
+| POST | `/api/payments/` | кассир+ | платёж вручную (`{ticket, amount, method}`; сумма сверяется с билетом) |
 | GET | `/api/dashboard/stats/` | менеджер/админ | KPI, график 7 дней, загрузка залов |
 | GET | `/api/dashboard/sales_report/` | менеджер/админ | отчёт по фильмам/залам/способам, `?date_from=&date_to=` |
 | GET | `/api/favorites/` | авторизован | избранное |
 | POST/DELETE | `/api/favorites/{movie_id}/` | авторизован | добавить/убрать |
 | POST | `/api/reviews/` | авторизован | отзыв/оценка (одна на фильм, 1–5) |
+| POST | `/api/webhooks/payment/{provider}/` | подпись HMAC | webhook Kaspi/Халык (`X-Signature`, сведение PaymentIntent → Ticket) |
 
 ## Коды ошибок
 
@@ -62,3 +65,12 @@ curl -X POST /api/bookings/pay/ -H 'Content-Type: application/json' \
 # Возврат (кассир)
 curl -X POST /api/bookings/5/refund/
 ```
+
+## Онлайн-оплата Kaspi/Халык (демо-шлюз)
+
+Экран `pay/{booking}` предлагает Kaspi/Халык/карту. По кнопкам Kaspi/Халык
+создаётся `PaymentIntent` и открывается демо-шлюз
+`pay/gateway/{external_id}/`; решение шлёт подписанный webhook в
+`/api/webhooks/payment/{provider}/` (заголовок `X-Signature` — HMAC-SHA256
+канонизированного JSON, секрет — `PAYMENT_WEBHOOK_SECRET`).
+Обработка идемпотентна: повторный webhook не создаёт второй билет.

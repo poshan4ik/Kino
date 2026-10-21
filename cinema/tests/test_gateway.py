@@ -68,6 +68,49 @@ class PaymentIntentTests(CinemaFixture):
         intent = PaymentIntent.objects.get()
         self.assertEqual(intent.provider, 'halyk')
 
+    def test_api_pay_kaspi_returns_gateway_redirect(self):
+        self.client.force_login(self.client_user)
+        resp = self.client.post('/api/bookings/pay/', {
+            'booking_ids': [self.booking.id], 'method': 'kaspi',
+        }, content_type='application/json')
+        self.assertEqual(resp.status_code, 200)
+        intent = PaymentIntent.objects.get()
+        self.assertEqual(intent.booking_id, self.booking.id)
+        self.assertEqual(intent.provider, 'kaspi')
+        self.assertIn(str(intent.external_id), resp.data['redirect'])
+        self.assertIn('/pay/gateway/', resp.data['redirect'])
+        # бронь ещё не оплачена — ждём webhook
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.status, 'pending_payment')
+
+    def test_api_pay_halyk_creates_intent_for_each_booking(self):
+        b2 = self.make_booking(
+            user=None, seat=self.seat2,
+            status='pending_payment',
+            expires_at=timezone.now() + timedelta(minutes=14),
+        )
+        self.client.force_login(self.client_user)
+        resp = self.client.post('/api/bookings/pay/', {
+            'booking_ids': [self.booking.id, b2.id], 'method': 'halyk',
+        }, content_type='application/json')
+        self.assertEqual(resp.status_code, 200)
+        intents = list(PaymentIntent.objects.order_by('booking_id'))
+        self.assertEqual(len(intents), 2)
+        self.assertEqual([i.provider for i in intents], ['halyk', 'halyk'])
+        self.assertTrue(
+            any(str(i.external_id) in resp.data['redirect'] for i in intents),
+            resp.data['redirect'],
+        )
+        self.assertEqual(len(resp.data['external_ids']), 2)
+
+    def test_api_pay_kaspi_denied_for_cash_only_gate(self):
+        # 'cash' для клиента по-прежнему запрещён
+        self.client.force_login(self.client_user)
+        resp = self.client.post('/api/bookings/pay/', {
+            'booking_ids': [self.booking.id], 'method': 'cash',
+        }, content_type='application/json')
+        self.assertEqual(resp.status_code, 400)
+
     def test_gateway_page_owner_sees_amount(self):
         intent = payments.create_intent(self.booking, 'kaspi')
         self.client.force_login(self.client_user)

@@ -12,6 +12,7 @@ from django.db.models.functions import TruncDate
 from django.db import transaction, connection
 from django.db.utils import IntegrityError
 from django.utils import timezone
+from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 import json
@@ -325,7 +326,7 @@ class BookingViewSet(viewsets.ModelViewSet):
         if not isinstance(raw_ids, list) or not raw_ids:
             return Response({'error': 'Нет броней для оплаты'},
                             status=status.HTTP_400_BAD_REQUEST)
-        if len(raw_ids) > 6:
+        if len(raw_ids) > settings.BOOKING_MAX_SEATS:
             return Response({'error': 'Слишком много броней'},
                             status=status.HTTP_400_BAD_REQUEST)
         try:
@@ -340,7 +341,8 @@ class BookingViewSet(viewsets.ModelViewSet):
                             status=status.HTTP_400_BAD_REQUEST)
         user = request.user
         is_staff = user.role in ['cashier', 'controller', 'manager', 'admin']
-        if not is_staff and method not in ['card', 'online']:
+        client_methods = ['card', 'online'] + list(payments.PROVIDERS)
+        if not is_staff and method not in client_methods:
             return Response({'error': 'Наличными оплачивает только кассир'},
                             status=status.HTTP_400_BAD_REQUEST)
 
@@ -360,6 +362,17 @@ class BookingViewSet(viewsets.ModelViewSet):
                 if booking.client_id != user.id and not is_staff:
                     return Response({'error': 'Нет доступа к бронированию'},
                                     status=status.HTTP_403_FORBIDDEN)
+
+            # Kaspi/Халык — без мгновенного списания: создаем PaymentIntent
+            # на каждую бронь и отправляем клиента в демо-шлюз банка
+            if method in payments.PROVIDERS:
+                intents = [payments.create_intent(b, method) for b in bookings]
+                return Response({
+                    'redirect': reverse(
+                        'payment_gateway', args=[intents[0].external_id]
+                    ),
+                    'external_ids': [str(i.external_id) for i in intents],
+                }, status=status.HTTP_200_OK)
 
             try:
                 tickets = [
@@ -706,7 +719,7 @@ class MovieReviewsAPIView(APIView):
             'rating': round(float(summary['average']), 1)
             if summary['average'] is not None else None,
             'count': summary['count'],
-            'results': ReviewSerializer(reviews, many=True).data,
+            'reviews': ReviewSerializer(reviews, many=True).data,
         })
 
 
@@ -749,16 +762,48 @@ class HomeView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         today = timezone.localdate()
-        movies = list(Movie.objects.filter(
-            status='active'
-        ).select_related('genre').annotate(
-            average_rating=Avg('reviews__rating'),
-            reviews_count=Count('reviews', distinct=True),
-        ).prefetch_related(
-            Prefetch('sessions', queryset=Session.objects.filter(
-                date__gte=today, is_active=True
-            ).select_related('hall').order_by('date', 'time'))
-        )[:12])
+
+        # Серверное сужение выборки по GET-параметрам (?q=, ?genre=, ?date=)
+        params = self.request.GET
+        q = (params.get('q') or '').strip()
+        genre_name = (params.get('genre') or '').strip()
+        date_raw = (params.get('date') or '').strip()
+        active_date = None
+        if date_raw:
+            try:
+                active_date = date.fromisoformat(date_raw)
+            except ValueError:
+                active_date = None
+        context['q'] = q
+        context['active_genre'] = genre_name
+        context['active_date'] = date_raw if active_date else ''
+
+        movies = Movie.objects.filter(status='active')
+        if q:
+            movies = movies.filter(title__icontains=q)
+        if genre_name:
+            movies = movies.filter(genre__name__iexact=genre_name)
+        if active_date:
+            movies = movies.filter(
+                sessions__date=active_date, sessions__is_active=True
+            ).distinct()
+
+        prefetch_filter = (
+            {'date': active_date, 'is_active': True}
+            if active_date else {'date__gte': today, 'is_active': True}
+        )
+        session_prefetch = Prefetch(
+            'sessions',
+            queryset=Session.objects.filter(
+                **prefetch_filter
+            ).select_related('hall').order_by('date', 'time'),
+        )
+        movies = list(
+            movies.select_related('genre').annotate(
+                average_rating=Avg('reviews__rating'),
+                reviews_count=Count('reviews', distinct=True),
+            ).prefetch_related(session_prefetch)[:12]
+        )
 
         for movie in movies:
             sessions = list(movie.sessions.all())
@@ -1186,8 +1231,8 @@ class BookingView(LoginRequiredMixin, TemplateView):
 
         messages.success(
             request,
-            f'Забронировано {len(bookings)} мест. Осталось оплатить — '
-            f'{settings.BOOKING_HOLD_MINUTES} минут на решение.'
+            f'Места закреплены за вами. Завершите оплату — '
+            f'Kaspi Gold, Халык или карта.'
         )
         return redirect('pay_booking', booking_id=bookings[0].id)
 
@@ -1737,6 +1782,8 @@ class ManagerSalesExportView(StaffSectionMixin, TemplateView):
         date_from = parse_date(
             request.GET.get('date_from'), date_to - timedelta(days=30)
         )
+        if date_from > date_to:
+            date_from, date_to = date_to, date_from
 
         payments = Payment.objects.filter(
             status='completed',

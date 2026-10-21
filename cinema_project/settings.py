@@ -208,7 +208,7 @@ SESSION_SAVE_EVERY_REQUEST = True
 
 # ── Бизнес-лимиты ───────────────────────────────────────
 BOOKING_MAX_SEATS = env_int('BOOKING_MAX_SEATS', 10)
-BOOKING_HOLD_MINUTES = env_int('BOOKING_HOLD_MINUTES', 15)
+BOOKING_HOLD_MINUTES = env_int('BOOKING_HOLD_MINUTES', 14)
 SESSION_BUFFER_MINUTES = env_int('SESSION_BUFFER_MINUTES', 20)
 
 # ── Платёжный шлюз (Kaspi/Халык) ────────────────────────
