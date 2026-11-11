@@ -49,7 +49,10 @@ if SITE_URL:
             or parsed_site_url.username or parsed_site_url.password
             or parsed_site_url.path or parsed_site_url.query or parsed_site_url.fragment):
         raise ImproperlyConfigured('SITE_URL must be an absolute HTTP(S) origin without a path.')
-GOOGLE_SITE_VERIFICATION = os.getenv('GOOGLE_SITE_VERIFICATION', '').strip()
+# Public ownership token for this site's Google Search Console property (not a password).
+GOOGLE_SITE_VERIFICATION = os.getenv(
+    'GOOGLE_SITE_VERIFICATION', 'vxIXimdA0tER6DSIEMJDIpf_lLxlosE1ugxaAJLH3_k'
+).strip()
 YANDEX_VERIFICATION = os.getenv('YANDEX_VERIFICATION', '').strip()
 
 ALLOWED_HOSTS = env_list('ALLOWED_HOSTS', 'localhost,127.0.0.1,testserver')
