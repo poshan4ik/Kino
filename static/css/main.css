@@ -1884,6 +1884,7 @@ textarea.form-control { height: auto; min-height: 88px; padding: 0.75rem 1rem; r
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
@@ -1901,7 +1902,8 @@ body::after {
   opacity: 0.05;
   mix-blend-mode: overlay;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='280'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='280' height='280' filter='url(%23n)'/%3E%3C/svg%3E");
-  animation: grainShift 0.9s steps(4) infinite;
+  /* Keep the grain still: rapid noise movement reads as flicker. */
+  animation: none;
 }
 @keyframes grainShift {
   0% { transform: translate(0, 0); }
@@ -2237,7 +2239,7 @@ body {
   background:
     linear-gradient(112deg, transparent 42%, rgb(var(--white-rgb) / 0.045) 47%, transparent 53%),
     linear-gradient(68deg, transparent 55%, rgb(var(--accent-rgb) / 0.07) 61%, transparent 68%);
-  animation: beamSway 14s ease-in-out infinite alternate;
+  animation: beamSway 30s ease-in-out infinite alternate;
   z-index: 2;
 }
 @keyframes beamSway {
@@ -2275,7 +2277,7 @@ body {
   display: flex;
   width: max-content;
   gap: 2.5rem;
-  animation: tickerScroll 38s linear infinite;
+  animation: tickerScroll 90s linear infinite;
   will-change: transform;
 }
 .ticker:hover .ticker-track { animation-play-state: paused; }
@@ -2735,3 +2737,17 @@ body {
 #moviesTable img { transition: transform var(--t-fast), filter var(--t-fast); border: 1px solid var(--border); }
 #moviesTable tr:hover img { transform: scale(1.18); filter: brightness(1.12); z-index: 1; }
 #moviesTable td:first-child { position: relative; }
+
+/* Decorative loops must stop, not run at 0.01ms, when motion is reduced. */
+@media (prefers-reduced-motion: reduce) {
+  body::after,
+  .hero::before,
+  .hero-glow,
+  .hero-scroll,
+  .ticker-track {
+    animation: none !important;
+    transform: none !important;
+  }
+  .hero-glow { opacity: 0.3; }
+  .ticker-track { will-change: auto; }
+}
