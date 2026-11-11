@@ -4,8 +4,13 @@ services:
     runtime: python
     plan: free
     buildCommand: bash build.sh
+    healthCheckPath: /health/
     startCommand: gunicorn cinema_project.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 60
     envVars:
+      - key: DEMO_MODE
+        value: "True"
+      - key: SITE_URL
+        value: "https://kino-aurora.onrender.com"
       - key: DJANGO_SECRET_KEY
         generateValue: true
       - key: DEBUG

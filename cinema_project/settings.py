@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
@@ -38,6 +39,18 @@ if not SECRET_KEY:
             'DJANGO_SECRET_KEY must be set when DEBUG=False. '
             'Set it in .env or environment variables.'
         )
+
+# This repository is an educational cinema demo. Set False for a real cinema.
+DEMO_MODE = env_bool('DEMO_MODE', 'True')
+SITE_URL = os.getenv('SITE_URL', os.getenv('RENDER_EXTERNAL_URL', '')).strip().rstrip('/')
+if SITE_URL:
+    parsed_site_url = urlsplit(SITE_URL)
+    if (parsed_site_url.scheme not in ('http', 'https') or not parsed_site_url.netloc
+            or parsed_site_url.username or parsed_site_url.password
+            or parsed_site_url.path or parsed_site_url.query or parsed_site_url.fragment):
+        raise ImproperlyConfigured('SITE_URL must be an absolute HTTP(S) origin without a path.')
+GOOGLE_SITE_VERIFICATION = os.getenv('GOOGLE_SITE_VERIFICATION', '').strip()
+YANDEX_VERIFICATION = os.getenv('YANDEX_VERIFICATION', '').strip()
 
 ALLOWED_HOSTS = env_list('ALLOWED_HOSTS', 'localhost,127.0.0.1,testserver')
 CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS')
@@ -81,6 +94,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'cinema.context_processors.booking_limits',
+                'cinema.seo.metadata',
             ],
         },
     },

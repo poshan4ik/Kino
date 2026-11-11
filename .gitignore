@@ -45,3 +45,4 @@ dist/
 # Misc
 *.bak
 *.backup
+.venv/

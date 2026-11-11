@@ -4,6 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    {% if seo_canonical_url %}
+    <link rel="canonical" href="{{ seo_canonical_url }}">
+    <meta property="og:url" content="{{ seo_canonical_url }}">
+    {% else %}
+    <meta name="robots" content="noindex, nofollow">
+    {% endif %}
+    {% if request.path == '/' and google_site_verification %}<meta name="google-site-verification" content="{{ google_site_verification }}">{% endif %}
+    {% if request.path == '/' and yandex_verification %}<meta name="yandex-verification" content="{{ yandex_verification }}">{% endif %}
     <meta name="theme-color" content="#0d0e12">
     <meta name="description" content="{% block meta_description %}Кинотеатр «Аврора» в Таразе — афиша фильмов, онлайн-выбор мест и электронные билеты с QR-кодом.{% endblock %}">
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230d0e12'/%3E%3Cpath d='M25 19l23 13-23 13z' fill='%23e53950'/%3E%3Ccircle cx='32' cy='32' r='26' fill='none' stroke='rgba(255,255,255,.14)' stroke-width='2'/%3E%3C/svg%3E">
@@ -148,6 +156,7 @@
 {% endif %}
 
 <!-- CONTENT -->
+{% if demo_mode %}<aside role="note" class="page-shell" style="padding-top:1rem;padding-bottom:1rem;color:var(--text-muted);">Учебный демонстрационный сайт. Расписание, отзывы и оплата — тестовые; настоящие билеты не продаются.</aside>{% endif %}
 {% block content %}{% endblock %}
 
 <!-- FOOTER -->

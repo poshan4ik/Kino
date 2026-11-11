@@ -758,6 +758,11 @@ def movie_badges(first_date, last_date):
 
 class HomeView(TemplateView):
     template_name = 'home.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        from cinema.demo import refresh_demo_schedule
+        refresh_demo_schedule()
+        return super().dispatch(request, *args, **kwargs)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -1853,6 +1858,7 @@ from django.http import HttpResponse  # noqa: E402
 
 
 def robots_txt(request):
+    from cinema.seo import public_url
     lines = [
         'User-agent: *',
         'Allow: /',
@@ -1865,7 +1871,7 @@ def robots_txt(request):
         'Disallow: /login/',
         'Disallow: /register/',
         'Disallow: /logout/',
-        f'Sitemap: {request.build_absolute_uri("/sitemap.xml")}',
+        f'Sitemap: {public_url(request, "/sitemap.xml")}',
         '',
     ]
     return HttpResponse('\n'.join(lines), content_type='text/plain; charset=utf-8')
@@ -1873,13 +1879,15 @@ def robots_txt(request):
 
 def sitemap_xml(request):
     from cinema.models import Movie
+    from cinema.seo import public_url
+    from xml.sax.saxutils import escape
 
     urls = [
-        (request.build_absolute_uri('/'), None, 'daily', '1.0'),
+        (public_url(request, '/'), None, 'daily', '1.0'),
     ]
-    for m in Movie.objects.filter(status='active').order_by('id'):
+    for m in Movie.objects.filter(status__in=['active', 'upcoming']).order_by('id'):
         urls.append((
-            request.build_absolute_uri(f'/film/{m.id}/'),
+            public_url(request, f'/film/{m.id}/'),
             m.updated_at.date().isoformat(),
             'weekly',
             '0.8',
@@ -1888,7 +1896,7 @@ def sitemap_xml(request):
              '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
     for loc, lastmod, freq, priority in urls:
         parts.append('  <url>')
-        parts.append(f'    <loc>{loc}</loc>')
+        parts.append(f'    <loc>{escape(loc)}</loc>')
         if lastmod:
             parts.append(f'    <lastmod>{lastmod}</lastmod>')
         parts.append(f'    <changefreq>{freq}</changefreq>')

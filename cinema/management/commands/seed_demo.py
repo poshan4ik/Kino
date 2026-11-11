@@ -228,8 +228,8 @@ class Command(BaseCommand):
 
     def seed_sessions(self):
         """Сеансы на ближайшие 10 дней для ВСЕХ фильмов, без пересечений."""
-        halls = list(Hall.objects.order_by('number'))
-        movies = list(Movie.objects.order_by('id'))
+        halls = list(Hall.objects.filter(number__in=[h[0] for h in DEMO_HALLS]).order_by('number'))
+        movies = list(Movie.objects.filter(status='active', title__in=[m[0] for m in DEMO_MOVIES]).order_by('id'))
         if not halls or not movies:
             return
 
